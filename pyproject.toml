@@ -3,6 +3,7 @@ name = "aio-usb"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+license = { text = "MIT" }
 authors = [
     { name = "David Lechner", email = "david@pybricks.com" }
 ]
