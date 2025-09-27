@@ -9,6 +9,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "rubicon-objc>=0.5.2 ; sys_platform == 'darwin'",
     "typing-extensions>=4.15.0",
     "winrt-windows-devices-enumeration>=3.2.1 ; sys_platform == 'win32'",
     "winrt-windows-devices-usb>=3.2.1 ; sys_platform == 'win32'",

@@ -10,6 +10,10 @@ def get_backend() -> BackendProvider:
     """
     Get the backend implementation for USB device communication.
     """
+    if sys.platform == "darwin":
+        from .rubicon_objc import RubiconObjCBackend
+
+        return RubiconObjCBackend()
     if sys.platform == "win32":
         from .winrt import WinRTBackend
 

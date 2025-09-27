@@ -2,9 +2,13 @@
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
 import asyncio
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
 from typing import Any
+
+if sys.platform != "win32":
+    raise ImportError("This module is only available on Windows")
 
 import winrt.windows.devices.enumeration as wde
 import winrt.windows.devices.usb as wdu
