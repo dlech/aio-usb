@@ -7,7 +7,7 @@ from aio_usb import find_usb_devices, open_usb_device
 async def main():
     infos = await find_usb_devices()
 
-    # print(len(infos), "devices found:")
+    print(len(infos), "devices found:")
     # for info in infos:
     #     print(info)
 
@@ -30,17 +30,23 @@ async def main():
         lang_ids = await device.get_lang_ids()
         print("Supported Language IDs:", lang_ids)
 
-        manufacturer = await device.get_string(
-            device_descriptor.manufacturer_index, lang_ids[0]
-        )
-        product = await device.get_string(device_descriptor.product_index, lang_ids[0])
-        serial_number = await device.get_string(
-            device_descriptor.serial_number_index, lang_ids[0]
-        )
+        if device_descriptor.manufacturer_index > 0:
+            manufacturer = await device.get_string(
+                device_descriptor.manufacturer_index, lang_ids[0]
+            )
+            print(f"  Manufacturer: {manufacturer}")
 
-        print(f"  Manufacturer: {manufacturer}")
-        print(f"  Product: {product}")
-        print(f"  Serial Number: {serial_number}")
+        if device_descriptor.product_index > 0:
+            product = await device.get_string(
+                device_descriptor.product_index, lang_ids[0]
+            )
+            print(f"  Product: {product}")
+
+        if device_descriptor.serial_number_index > 0:
+            serial_number = await device.get_string(
+                device_descriptor.serial_number_index, lang_ids[0]
+            )
+            print(f"  Serial Number: {serial_number}")
 
 
 asyncio.run(main())
