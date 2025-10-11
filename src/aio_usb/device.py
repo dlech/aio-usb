@@ -66,7 +66,9 @@ class UsbDevice:
             The device descriptor.
         """
 
-        data = await self.control_transfer_in(get_descriptor(DEVICE_DESCRIPTOR, 0), 18)
+        data = await self.control_transfer_in(
+            get_descriptor(DEVICE_DESCRIPTOR, 0), DeviceDescriptor.SIZE
+        )
 
         return DeviceDescriptor(data)
 

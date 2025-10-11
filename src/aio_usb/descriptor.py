@@ -15,8 +15,12 @@ ENDPOINT_DESCRIPTOR = 0x05
 
 LANGID_EN_US = 0x0409
 
+_DEVICE_DESCRIPTOR_STRUCT = struct.Struct("<BBHBBBBHHHBBBB")
+
 
 class DeviceDescriptor:
+    SIZE = _DEVICE_DESCRIPTOR_STRUCT.size
+
     def __init__(
         self,
         data: bytes,
@@ -36,7 +40,7 @@ class DeviceDescriptor:
             self.product_index,
             self.serial_number_index,
             self.num_configurations,
-        ) = struct.unpack("<BBHBBBBHHHBBBB", data)
+        ) = _DEVICE_DESCRIPTOR_STRUCT.unpack(data)
 
     def __repr__(self) -> str:
         return (
