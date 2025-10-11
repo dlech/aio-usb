@@ -14,6 +14,10 @@ def get_backend() -> BackendProvider:
         from .rubicon_objc import RubiconObjCBackend
 
         return RubiconObjCBackend()
+    if sys.platform == "linux":
+        from .linux import LinuxBackend
+
+        return LinuxBackend()
     if sys.platform == "win32":
         from .winrt import WinRTBackend
 
