@@ -101,6 +101,8 @@ class UsbDevice:
             The string descriptor.
         """
 
+        assert index != 0, "String index 0 is reserved"
+
         data = await self.control_transfer_in(
             get_string_descriptor(index, lang_id), 255
         )
