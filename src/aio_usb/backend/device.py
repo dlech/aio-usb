@@ -3,8 +3,7 @@
 
 from abc import ABC, abstractmethod
 
-from aio_usb.ch9 import UsbDeviceDescriptor
-from aio_usb.control import UsbControlTransferSetup
+from aio_usb.ch9 import UsbControlRequest, UsbDeviceDescriptor
 
 
 class UsbBackendDevice(ABC):
@@ -21,7 +20,5 @@ class UsbBackendDevice(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def control_transfer_in(
-        self, setup: UsbControlTransferSetup, length: int
-    ) -> bytes:
+    async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
         raise NotImplementedError

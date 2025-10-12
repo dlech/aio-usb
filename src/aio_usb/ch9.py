@@ -38,7 +38,7 @@ class UsbDirection(IntEnum):
     """
     USB transfer directions.
 
-    The first of three bRequestType fields.
+    The first of three bmRequestType fields.
     """
 
     OUT = 0  # to device
@@ -49,7 +49,7 @@ class UsbType(IntEnum):
     """
     USB transfer types.
 
-    The second of three bRequestType fields.
+    The second of three bmRequestType fields.
     """
 
     STANDARD = 0x00 << 5
@@ -62,7 +62,7 @@ class UsbRecipient(IntEnum):
     """
     USB recipients.
 
-    The third of three bRequestType fields.
+    The third of three bmRequestType fields.
     """
 
     DEVICE = 0x00
@@ -77,7 +77,7 @@ class UsbRequest(IntEnum):
     """
     Standard requests, for the bRequest field of a SETUP packet.
 
-    These are qualified by the bRequestType field, so that for example
+    These are qualified by the bmRequestType field, so that for example
     TYPE_CLASS or TYPE_VENDOR specific feature flags could be retrieved
     by a GET_STATUS request.
     """
@@ -95,6 +95,23 @@ class UsbRequest(IntEnum):
     SYNCH_FRAME = 0x0C
     SET_SEL = 0x30
     SET_ISOCH_DELAY = 0x31
+
+
+class UsbControlRequest(ctypes.LittleEndianStructure):
+    bmRequestType: int
+    bRequest: int
+    wValue: int
+    wIndex: int
+    wLength: int
+
+    _pack_ = 1
+    _fields_ = [
+        ("bmRequestType", ctypes.c_uint8),
+        ("bRequest", ctypes.c_uint8),
+        ("wValue", ctypes.c_uint16),
+        ("wIndex", ctypes.c_uint16),
+        ("wLength", ctypes.c_uint16),
+    ]
 
 
 class UsbDescriptorType(IntEnum):

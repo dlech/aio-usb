@@ -29,16 +29,6 @@ Comes from include/uapi/linux/usb/ch9.h.
 #     someone that the two other points are non-issues for that
 #     particular descriptor type.
 
-
-# CONTROL REQUEST SUPPORT
-
-# USB directions
-#
-# This bit flag is used in endpoint descriptors' bEndpointAddress field.
-# It's also one of three fields in control requests bRequestType.
-
-import ctypes
-
 # Wireless USB
 USB_REQ_SET_ENCRYPTION = 0x0D
 USB_REQ_GET_ENCRYPTION = 0x0E
@@ -130,39 +120,6 @@ USB_PORT_PORT_PD_RESET = 48
 USB_PORT_C_PORT_PD_CHANGE = 49
 USB_PORT_CABLE_PD_RESET = 50
 USB_DEVICE_CHARGING_POLICY = 54
-
-# struct usb_ctrlrequest - SETUP data for a USB device control request
-# @bRequestType: matches the USB bmRequestType field
-# @bRequest: matches the USB bRequest field
-# @wValue: matches the USB wValue field (le16 byte order)
-# @wIndex: matches the USB wIndex field (le16 byte order)
-# @wLength: matches the USB wLength field (le16 byte order)
-#
-# This structure is used to send control requests to a USB device.  It matches
-# the different fields of the USB 2.0 Spec section 9.3, table 9-2.  See the
-# USB spec for a fuller description of the different fields, and what they are
-# used for.
-#
-# Note that the driver for any interface can issue control requests.
-# For most devices, interfaces don't coordinate with each other, so
-# such requests may be made at any time.
-
-
-class usb_ctrlrequest(ctypes.LittleEndianStructure):
-    bRequestType: int
-    bRequest: int
-    wValue: int
-    wIndex: int
-    wLength: int
-
-    _pack_ = 1
-    _fields_ = [
-        ("bRequestType", ctypes.c_uint8),
-        ("bRequest", ctypes.c_uint8),
-        ("wValue", ctypes.c_uint16),
-        ("wIndex", ctypes.c_uint16),
-        ("wLength", ctypes.c_uint16),
-    ]
 
 
 # /*-------------------------------------------------------------------------*/

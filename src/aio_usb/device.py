@@ -7,14 +7,11 @@ from aio_usb.backend.device import UsbBackendDevice
 from aio_usb.ch9 import (
     UsbBosDescriptor,
     UsbConfigDescriptor,
+    UsbControlRequest,
     UsbDescriptorType,
     UsbDeviceDescriptor,
 )
-from aio_usb.control import (
-    UsbControlTransferSetup,
-    get_descriptor,
-    get_string_descriptor,
-)
+from aio_usb.control import get_descriptor, get_string_descriptor
 from aio_usb.descriptor import StringDescriptor, StringLangIdDescriptor
 
 
@@ -37,10 +34,8 @@ class UsbDevice:
         """
         return self._backend.device_descriptor
 
-    async def control_transfer_in(
-        self, setup: UsbControlTransferSetup, length: int
-    ) -> bytes:
-        return await self._backend.control_transfer_in(setup, length)
+    async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
+        return await self._backend.control_transfer_in(request)
 
     async def get_config_descriptor(self, index: int) -> bytes:
         """
@@ -54,14 +49,17 @@ class UsbDevice:
         """
 
         data = await self.control_transfer_in(
-            get_descriptor(UsbDescriptorType.CONFIGURATION, index),
-            ctypes.sizeof(UsbConfigDescriptor),
+            get_descriptor(
+                UsbDescriptorType.CONFIGURATION,
+                index,
+                ctypes.sizeof(UsbConfigDescriptor),
+            ),
         )
 
         desc = UsbConfigDescriptor.from_buffer_copy(data)
 
         data = await self.control_transfer_in(
-            get_descriptor(UsbDescriptorType.CONFIGURATION, index), desc.wTotalLength
+            get_descriptor(UsbDescriptorType.CONFIGURATION, index, desc.wTotalLength)
         )
 
         return data
@@ -78,7 +76,7 @@ class UsbDevice:
         """
 
         data = await self.control_transfer_in(
-            get_descriptor(UsbDescriptorType.STRING, 0), 2 + num * 2
+            get_descriptor(UsbDescriptorType.STRING, 0, 2 + num * 2),
         )
 
         desc = StringLangIdDescriptor(data)
@@ -100,7 +98,7 @@ class UsbDevice:
         assert index != 0, "String index 0 is reserved"
 
         data = await self.control_transfer_in(
-            get_string_descriptor(index, lang_id), 255
+            get_string_descriptor(index, lang_id, 255)
         )
 
         desc = StringDescriptor(data)
@@ -116,13 +114,13 @@ class UsbDevice:
         """
 
         data = await self.control_transfer_in(
-            get_descriptor(UsbDescriptorType.BOS, 0), ctypes.sizeof(UsbBosDescriptor)
+            get_descriptor(UsbDescriptorType.BOS, 0, ctypes.sizeof(UsbBosDescriptor)),
         )
 
         bos = UsbBosDescriptor.from_buffer_copy(data)
 
         data = await self.control_transfer_in(
-            get_descriptor(UsbDescriptorType.BOS, 0), bos.wTotalLength
+            get_descriptor(UsbDescriptorType.BOS, 0, bos.wTotalLength),
         )
 
         return data

@@ -8,7 +8,7 @@ from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
 from typing import Any
 
-from aio_usb.ch9 import UsbDeviceDescriptor
+from aio_usb.ch9 import UsbControlRequest, UsbDeviceDescriptor
 
 if sys.platform != "darwin":
     raise ImportError("This module is only available on macOS")
@@ -36,7 +36,6 @@ from aio_usb.backend.rubicon_objc.io_usb_host import (
     IOUSBHostDevice,
 )
 from aio_usb.backend.rubicon_objc.runtime import NSErrorError, mach_error_string
-from aio_usb.control import UsbControlTransferSetup
 from aio_usb.device import UsbDevice
 from aio_usb.discovery import UsbDeviceInfo
 
@@ -70,42 +69,16 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
         return self._device_descriptor
 
     @override
-    async def control_transfer_in(
-        self, setup: UsbControlTransferSetup, length: int
-    ) -> bytes:
-        request_type = 1 << 7  # direction: device to host
-
-        match setup["request_type"]:
-            case "standard":
-                request_type |= 0 << 5
-            case "class":
-                request_type |= 1 << 5
-            case "vendor":
-                request_type |= 2 << 5
-            case _:
-                raise ValueError(f"Invalid request type: {setup['request_type']}")
-
-        match setup["recipient"]:
-            case "device":
-                request_type |= 0
-            case "interface":
-                request_type |= 1
-            case "endpoint":
-                request_type |= 2
-            case "other":
-                request_type |= 3
-            case _:
-                raise ValueError(f"Invalid recipient: {setup['recipient']}")
-
-        request = IOUSBDeviceRequest(
-            request_type,
-            setup["request"],
-            setup["value"],
-            setup["index"],
-            length,
+    async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
+        _request = IOUSBDeviceRequest(
+            request.bmRequestType,
+            request.bRequest,
+            request.wValue,
+            request.wIndex,
+            request.wLength,
         )
 
-        data = NSMutableData.dataWithLength(length)
+        data = NSMutableData.dataWithLength(request.wLength)
 
         err_id = objc_id()
 
@@ -121,7 +94,7 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
                 loop.call_soon_threadsafe(future.set_result, bytesTransferred)
 
         if not self._device.enqueueDeviceRequest(
-            request,
+            _request,
             data=data,
             error=err_id,
             completionHandler=on_complete,
