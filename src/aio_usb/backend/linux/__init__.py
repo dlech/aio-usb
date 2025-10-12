@@ -12,8 +12,6 @@ from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanag
 from typing import Any, ParamSpec, Protocol, TypeVar
 from weakref import WeakValueDictionary
 
-from aio_usb.ch9 import UsbDeviceDescriptor, UsbDirection, UsbRecipient, UsbType
-
 if sys.platform != "linux":
     raise ImportError("This module is only available on Linux")
 
@@ -22,11 +20,10 @@ from typing_extensions import override
 from aio_usb.backend.device import UsbBackendDevice
 from aio_usb.backend.monitor import UsbMonitor
 from aio_usb.backend.provider import BackendProvider
-from aio_usb.control import UsbControlTransferSetup
+from aio_usb.ch9 import UsbControlRequest, UsbDeviceDescriptor
 from aio_usb.device import UsbDevice
 from aio_usb.discovery import UsbDeviceInfo
 
-from .lib.linux.usb.ch9 import usb_ctrlrequest
 from .lib.linux.usbdevice_fs import (
     USBDEVFS_DISCARDURB,
     USBDEVFS_REAPURBNDELAY,
@@ -119,48 +116,17 @@ class LinuxUsbDevice(UsbBackendDevice):
         return self._device_descriptor
 
     @override
-    async def control_transfer_in(
-        self, setup: UsbControlTransferSetup, length: int
-    ) -> bytes:
+    async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
         class Transfer(ctypes.Structure):
-            ctrl_req: usb_ctrlrequest
+            ctrl_req: UsbControlRequest
             data: ctypes.Array[ctypes.c_uint8]
             _pack_ = 1
             _fields_ = [
-                ("ctrl_req", usb_ctrlrequest),
-                ("data", ctypes.c_uint8 * length),
+                ("ctrl_req", UsbControlRequest),
+                ("data", ctypes.c_uint8 * request.wLength),
             ]
 
-        transfer = Transfer()
-
-        transfer.ctrl_req.bRequestType = UsbDirection.IN
-
-        match setup["request_type"]:
-            case "standard":
-                transfer.ctrl_req.bRequest |= UsbType.STANDARD
-            case "class":
-                transfer.ctrl_req.bRequest |= UsbType.CLASS
-            case "vendor":
-                transfer.ctrl_req.bRequest |= UsbType.VENDOR
-            case _:
-                raise TypeError(f"Invalid request_type: {setup['request_type']}")
-
-        match setup["recipient"]:
-            case "device":
-                transfer.ctrl_req.bRequestType |= UsbRecipient.DEVICE
-            case "interface":
-                transfer.ctrl_req.bRequestType |= UsbRecipient.INTERFACE
-            case "endpoint":
-                transfer.ctrl_req.bRequestType |= UsbRecipient.ENDPOINT
-            case "other":
-                transfer.ctrl_req.bRequestType |= UsbRecipient.OTHER
-            case _:
-                raise TypeError(f"Invalid recipient: {setup['recipient']}")
-
-        transfer.ctrl_req.bRequest = setup["request"]
-        transfer.ctrl_req.wValue = setup["value"]
-        transfer.ctrl_req.wIndex = setup["index"]
-        transfer.ctrl_req.wLength = length
+        transfer = Transfer(request)
 
         urb = usbdevfs_urb()
         urb.type = USBDEVFS_URB_TYPE_CONTROL
