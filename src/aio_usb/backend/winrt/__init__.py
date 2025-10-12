@@ -93,20 +93,11 @@ class WinRTUsbDevice(UsbBackendDevice):
 
     @override
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
-        # REVISIT: This should work, but it doesn't. Need to investigate more.
-        # It could be bug in Windows or a bug in PyWinRT.
-        # setup = wdu.UsbSetupPacket(request)
-
+        # NB: there seems to be a bug in the Windows SDK, so we can't use the
+        # UsbSetupPacket constructor that takes a buffer.
         setup = wdu.UsbSetupPacket()
-        setup.request_type.direction = wdu.UsbTransferDirection(
-            request.bmRequestType >> 7
-        )
-        setup.request_type.control_transfer_type = wdu.UsbControlTransferType(
-            (request.bmRequestType >> 5) & 0x03
-        )
-        setup.request_type.recipient = wdu.UsbControlRecipient(
-            request.bmRequestType & 0x1F
-        )
+
+        setup.request_type.as_byte = request.bmRequestType
         setup.request = request.bRequest
         setup.value = request.wValue
         setup.index = request.wIndex
