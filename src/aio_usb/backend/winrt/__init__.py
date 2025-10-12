@@ -2,10 +2,13 @@
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
 import asyncio
+import ctypes
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
 from typing import Any
+
+from aio_usb.ch9 import UsbDescriptorType, UsbDeviceDescriptor, UsbRequest
 
 if sys.platform != "win32":
     raise ImportError("This module is only available on Windows")
@@ -73,23 +76,16 @@ def _marshal_device_info(info: wde.DeviceInformation) -> UsbDeviceInfo:
 
 
 class WinRTUsbDevice(UsbBackendDevice):
-    def __init__(self, device: wdu.UsbDevice) -> None:
+    def __init__(
+        self, device: wdu.UsbDevice, device_descriptor: UsbDeviceDescriptor
+    ) -> None:
         self._device = device
+        self._device_descriptor = device_descriptor
 
     @property
     @override
-    def vendor_id(self) -> int:
-        return self._device.device_descriptor.vendor_id
-
-    @property
-    @override
-    def product_id(self) -> int:
-        return self._device.device_descriptor.product_id
-
-    @property
-    @override
-    def version(self) -> int:
-        return self._device.device_descriptor.bcd_device_revision
+    def device_descriptor(self) -> UsbDeviceDescriptor:
+        return self._device_descriptor
 
     @override
     async def control_transfer_in(
@@ -173,7 +169,24 @@ async def _open_monitor() -> AsyncGenerator[Any, UsbMonitor]:
 async def _open_device(device_id: str) -> AsyncGenerator[Any, UsbDevice]:
     device = await wdu.UsbDevice.from_id_async(device_id)
     with device:
-        yield UsbDevice(WinRTUsbDevice(device))
+        # The WinRT API doesn't provide all of the fields we need for the device
+        # descriptor, so we have to fetch it manually.
+        buf = wss.Buffer(ctypes.sizeof(UsbDeviceDescriptor))
+        buf.length = buf.capacity
+
+        setup = wdu.UsbSetupPacket()
+        setup.request_type.direction = wdu.UsbTransferDirection.IN
+        setup.request_type.recipient = wdu.UsbControlRecipient.DEVICE
+        setup.request_type.control_transfer_type = wdu.UsbControlTransferType.STANDARD
+        setup.request = UsbRequest.GET_DESCRIPTOR
+        setup.value = (UsbDescriptorType.DEVICE << 8) | 0
+        setup.index = 0
+        setup.length = buf.length
+        await device.send_control_in_transfer_async(setup, buf)
+
+        device_descriptor = UsbDeviceDescriptor.from_buffer_copy(buf)
+
+        yield UsbDevice(WinRTUsbDevice(device, device_descriptor))
 
 
 class WinRTBackend(BackendProvider):
@@ -195,4 +208,17 @@ class WinRTBackend(BackendProvider):
 
     @override
     def open_device(self, device_id: str) -> AbstractAsyncContextManager[UsbDevice]:
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
+        return _open_device(device_id)
         return _open_device(device_id)

@@ -72,7 +72,10 @@ async def print_device_descriptor(device: UsbDevice, lang_id: int) -> None:
     print(f"  iManufacturer      {dd.iManufacturer: 4d}  {mfg}")
     product = await device.get_string(dd.iProduct, lang_id) if dd.iProduct else ""
     print(f"  iProduct           {dd.iProduct: 4d}  {product}")
-    print(f"  iSerialNumber      {dd.iSerialNumber: 4d}")
+    serial = (
+        await device.get_string(dd.iSerialNumber, lang_id) if dd.iSerialNumber else ""
+    )
+    print(f"  iSerialNumber      {dd.iSerialNumber: 4d}  {serial}")
     print(f"  bNumConfigurations {dd.bNumConfigurations: 4d}")
 
     for i in range(dd.bNumConfigurations):

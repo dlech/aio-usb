@@ -39,26 +39,6 @@ Comes from include/uapi/linux/usb/ch9.h.
 
 import ctypes
 
-# Standard requests, for the bRequest field of a SETUP packet.
-#
-# These are qualified by the bRequestType field, so that for example
-# TYPE_CLASS or TYPE_VENDOR specific feature flags could be retrieved
-# by a GET_STATUS request.
-
-USB_REQ_GET_STATUS = 0x00
-USB_REQ_CLEAR_FEATURE = 0x01
-USB_REQ_SET_FEATURE = 0x03
-USB_REQ_SET_ADDRESS = 0x05
-USB_REQ_GET_DESCRIPTOR = 0x06
-USB_REQ_SET_DESCRIPTOR = 0x07
-USB_REQ_GET_CONFIGURATION = 0x08
-USB_REQ_SET_CONFIGURATION = 0x09
-USB_REQ_GET_INTERFACE = 0x0A
-USB_REQ_SET_INTERFACE = 0x0B
-USB_REQ_SYNCH_FRAME = 0x0C
-USB_REQ_SET_SEL = 0x30
-USB_REQ_SET_ISOCH_DELAY = 0x31
-
 # Wireless USB
 USB_REQ_SET_ENCRYPTION = 0x0D
 USB_REQ_GET_ENCRYPTION = 0x0E
