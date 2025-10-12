@@ -8,6 +8,8 @@ from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
 from typing import Any
 
+from aio_usb.ch9 import UsbDeviceDescriptor
+
 if sys.platform != "darwin":
     raise ImportError("This module is only available on macOS")
 
@@ -57,21 +59,15 @@ def _marshal_device_info(service: IOService) -> UsbDeviceInfo:
 class RubiconObjCUsbDevice(UsbBackendDevice):
     def __init__(self, device: IOUSBHostDevice) -> None:
         self._device = device
+        # This works since CPU is little-endian.
+        self._device_descriptor = UsbDeviceDescriptor.from_buffer_copy(
+            device.deviceDescriptor.contents
+        )
 
     @property
     @override
-    def vendor_id(self) -> int:
-        return self._device.deviceDescriptor.contents.idVendor
-
-    @property
-    @override
-    def product_id(self) -> int:
-        return self._device.deviceDescriptor.contents.idProduct
-
-    @property
-    @override
-    def version(self) -> int:
-        return self._device.deviceDescriptor.contents.bcdDevice
+    def device_descriptor(self) -> UsbDeviceDescriptor:
+        return self._device_descriptor
 
     @override
     async def control_transfer_in(
