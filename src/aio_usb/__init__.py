@@ -5,8 +5,6 @@ from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any
 
-from typing_extensions import Unpack
-
 from aio_usb.backend import get_backend
 from aio_usb.backend.monitor import UsbMonitor
 from aio_usb.device import UsbDevice
@@ -51,18 +49,40 @@ def monitor_usb_devices() -> AbstractAsyncContextManager[UsbMonitor]:
 
 
 async def find_usb_devices(
-    **kwargs: Unpack[UsbDeviceMatch],
+    *,
+    vendor_id: int | None = None,
+    product_id: int | None = None,
+    class_: int | None = None,
+    subclass: int | None = None,
+    protocol: int | None = None,
 ) -> list[UsbDeviceInfo]:
     """
     Find USB devices that match the given criteria.
     Args:
-        **kwargs: The device match criteria.
+        vendor_id: The USB vendor ID (idVendor).
+        product_id: The USB product ID (idProduct).
+        class_: The USB interface class (bDeviceClass).
+        subclass: The USB interface subclass (bDeviceSubClass).
+        protocol: The USB interface protocol (bDeviceProtocol).
 
     Returns:
         A list of matching USB devices.
     """
     devices = await _backend.list_devices()
-    return list(filter(lambda d: _match_device(d, kwargs), devices))
+
+    match: UsbDeviceMatch = {}
+    if vendor_id is not None:
+        match["vendor_id"] = vendor_id
+    if product_id is not None:
+        match["product_id"] = product_id
+    if class_ is not None:
+        match["class_"] = class_
+    if subclass is not None:
+        match["subclass"] = subclass
+    if protocol is not None:
+        match["protocol"] = protocol
+
+    return list(filter(lambda d: _match_device(d, match), devices))
 
 
 def open_usb_device(device_id: str) -> AbstractAsyncContextManager[UsbDevice]:

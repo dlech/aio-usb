@@ -18,6 +18,16 @@
             "request": "launch",
             "program": "try2.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: aio_usb/cli.py",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "aio_usb.cli",
+            "console": "integratedTerminal",
+            "args": [
+                "--verbose"
+            ]
         }
     ]
 }

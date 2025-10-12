@@ -39,27 +39,6 @@ Comes from include/uapi/linux/usb/ch9.h.
 
 import ctypes
 
-USB_DIR_OUT = 0  # to device
-USB_DIR_IN = 0x80  # to host
-
-# USB types, the second of three bRequestType fields
-
-USB_TYPE_MASK = 0x03 << 5
-USB_TYPE_STANDARD = 0x00 << 5
-USB_TYPE_CLASS = 0x01 << 5
-USB_TYPE_VENDOR = 0x02 << 5
-USB_TYPE_RESERVED = 0x03 << 5
-
-# USB recipients, the third of three bRequestType fields
-USB_RECIP_MASK = 0x1F
-USB_RECIP_DEVICE = 0x00
-USB_RECIP_INTERFACE = 0x01
-USB_RECIP_ENDPOINT = 0x02
-USB_RECIP_OTHER = 0x03
-# From Wireless USB 1.0
-USB_RECIP_PORT = 0x04
-USB_RECIP_RPIPE = 0x05
-
 # Standard requests, for the bRequest field of a SETUP packet.
 #
 # These are qualified by the bRequestType field, so that for example
@@ -206,162 +185,6 @@ class usb_ctrlrequest(ctypes.LittleEndianStructure):
     ]
 
 
-# STANDARD DESCRIPTORS ... as returned by GET_DESCRIPTOR, or
-# (rarely) accepted by SET_DESCRIPTOR.
-#
-# Note that all multi-byte values here are encoded in little endian
-# byte order "on the wire".  Within the kernel and when exposed
-# through the Linux-USB APIs, they are not converted to cpu byte
-# order; it is the responsibility of the client code to do this.
-# The single exception is when device and configuration descriptors (but
-# not other descriptors) are read from character devices
-# (i.e. /dev/bus/usb/BBB/DDD);
-# in this case the fields are converted to host endianness by the kernel.
-
-# Descriptor types ... USB 2.0 spec table 9.5
-USB_DT_DEVICE = 0x01
-USB_DT_CONFIG = 0x02
-USB_DT_STRING = 0x03
-USB_DT_INTERFACE = 0x04
-USB_DT_ENDPOINT = 0x05
-USB_DT_DEVICE_QUALIFIER = 0x06
-USB_DT_OTHER_SPEED_CONFIG = 0x07
-USB_DT_INTERFACE_POWER = 0x08
-# these are from a minor usb 2.0 revision (ECN)
-USB_DT_OTG = 0x09
-USB_DT_DEBUG = 0x0A
-USB_DT_INTERFACE_ASSOCIATION = 0x0B
-# these are from the Wireless USB spec
-USB_DT_SECURITY = 0x0C
-USB_DT_KEY = 0x0D
-USB_DT_ENCRYPTION_TYPE = 0x0E
-USB_DT_BOS = 0x0F
-USB_DT_DEVICE_CAPABILITY = 0x10
-USB_DT_WIRELESS_ENDPOINT_COMP = 0x11
-USB_DT_WIRE_ADAPTER = 0x21
-USB_DT_RPIPE = 0x22
-USB_DT_CS_RADIO_CONTROL = 0x23
-# From the T10 UAS specification
-USB_DT_PIPE_USAGE = 0x24
-# From the USB 3.0 spec
-USB_DT_SS_ENDPOINT_COMP = 0x30
-# From the USB 3.1 spec
-USB_DT_SSP_ISOC_ENDPOINT_COMP = 0x31
-
-# Conventional codes for class-specific descriptors.  The convention is
-# defined in the USB "Common Class" Spec (3.11).  Individual class specs
-# are authoritative for their usage, not the "common class" writeup.
-USB_DT_CS_DEVICE = USB_TYPE_CLASS | USB_DT_DEVICE
-USB_DT_CS_CONFIG = USB_TYPE_CLASS | USB_DT_CONFIG
-USB_DT_CS_STRING = USB_TYPE_CLASS | USB_DT_STRING
-USB_DT_CS_INTERFACE = USB_TYPE_CLASS | USB_DT_INTERFACE
-USB_DT_CS_ENDPOINT = USB_TYPE_CLASS | USB_DT_ENDPOINT
-
-
-# All standard descriptors have these 2 fields at the beginning */
-# struct usb_descriptor_header {
-# 	__u8  bLength;
-# 	__u8  bDescriptorType;
-# } __attribute__ ((packed));
-
-
-# /*-------------------------------------------------------------------------*/
-
-
-class usb_device_descriptor(ctypes.LittleEndianStructure):
-    bLength: int
-    bDescriptorType: int
-    bcdUSB: int
-    bDeviceClass: int
-    bDeviceSubClass: int
-    bDeviceProtocol: int
-    bMaxPacketSize0: int
-    idVendor: int
-    idProduct: int
-    bcdDevice: int
-    iManufacturer: int
-    iProduct: int
-    iSerialNumber: int
-    bNumConfigurations: int
-
-    _pack_ = 1
-    _fields_ = [
-        ("bLength", ctypes.c_uint8),
-        ("bDescriptorType", ctypes.c_uint8),
-        ("bcdUSB", ctypes.c_uint16),
-        ("bDeviceClass", ctypes.c_uint8),
-        ("bDeviceSubClass", ctypes.c_uint8),
-        ("bDeviceProtocol", ctypes.c_uint8),
-        ("bMaxPacketSize0", ctypes.c_uint8),
-        ("idVendor", ctypes.c_uint16),
-        ("idProduct", ctypes.c_uint16),
-        ("bcdDevice", ctypes.c_uint16),
-        ("iManufacturer", ctypes.c_uint8),
-        ("iProduct", ctypes.c_uint8),
-        ("iSerialNumber", ctypes.c_uint8),
-        ("bNumConfigurations", ctypes.c_uint8),
-    ]
-
-
-# /*
-# Device and/or Interface Class codes
-# as found in bDeviceClass or bInterfaceClass
-# and defined by www.usb.org documents
-# /
-# #define USB_CLASS_PER_INTERFACE		0	/* for DeviceClass */
-# #define USB_CLASS_AUDIO			1
-# #define USB_CLASS_COMM			2
-# #define USB_CLASS_HID			3
-# #define USB_CLASS_PHYSICAL		5
-# #define USB_CLASS_STILL_IMAGE		6
-# #define USB_CLASS_PRINTER		7
-# #define USB_CLASS_MASS_STORAGE		8
-# #define USB_CLASS_HUB			9
-# #define USB_CLASS_CDC_DATA		0x0a
-# #define USB_CLASS_CSCID			0x0b	/* chip+ smart card */
-# #define USB_CLASS_CONTENT_SEC		0x0d	/* content security */
-# #define USB_CLASS_VIDEO			0x0e
-# #define USB_CLASS_WIRELESS_CONTROLLER	0xe0
-# #define USB_CLASS_PERSONAL_HEALTHCARE	0x0f
-# #define USB_CLASS_AUDIO_VIDEO		0x10
-# #define USB_CLASS_BILLBOARD		0x11
-# #define USB_CLASS_USB_TYPE_C_BRIDGE	0x12
-# #define USB_CLASS_MISC			0xef
-# #define USB_CLASS_APP_SPEC		0xfe
-# #define USB_CLASS_VENDOR_SPEC		0xff
-
-# #define USB_SUBCLASS_VENDOR_SPEC	0xff
-
-# /*-------------------------------------------------------------------------*/
-
-# /* USB_DT_CONFIG: Configuration descriptor information.
-#
-# USB_DT_OTHER_SPEED_CONFIG is the same descriptor, except that the
-# descriptor type is different.  Highspeed-capable devices can look
-# different depending on what speed they're currently running.  Only
-# devices with a USB_DT_DEVICE_QUALIFIER have any OTHER_SPEED_CONFIG
-# descriptors.
-# /
-# struct usb_config_descriptor {
-# 	__u8  bLength;
-# 	__u8  bDescriptorType;
-
-# 	__le16 wTotalLength;
-# 	__u8  bNumInterfaces;
-# 	__u8  bConfigurationValue;
-# 	__u8  iConfiguration;
-# 	__u8  bmAttributes;
-# 	__u8  bMaxPower;
-# } __attribute__ ((packed));
-
-# #define USB_DT_CONFIG_SIZE		9
-
-# /* from config descriptor bmAttributes */
-# #define USB_CONFIG_ATT_ONE		(1 << 7)	/* must be set */
-# #define USB_CONFIG_ATT_SELFPOWER	(1 << 6)	/* self powered */
-# #define USB_CONFIG_ATT_WAKEUP		(1 << 5)	/* can wakeup */
-# #define USB_CONFIG_ATT_BATTERY		(1 << 4)	/* battery powered */
-
 # /*-------------------------------------------------------------------------*/
 
 # /* USB String descriptors can contain at most 126 characters. */
@@ -381,45 +204,6 @@ class usb_device_descriptor(ctypes.LittleEndianStructure):
 # /* note that "string" zero is special, it holds language codes that
 # the device supports, not Unicode characters.
 # /
-
-# /*-------------------------------------------------------------------------*/
-
-# /* USB_DT_INTERFACE: Interface descriptor */
-# struct usb_interface_descriptor {
-# 	__u8  bLength;
-# 	__u8  bDescriptorType;
-
-# 	__u8  bInterfaceNumber;
-# 	__u8  bAlternateSetting;
-# 	__u8  bNumEndpoints;
-# 	__u8  bInterfaceClass;
-# 	__u8  bInterfaceSubClass;
-# 	__u8  bInterfaceProtocol;
-# 	__u8  iInterface;
-# } __attribute__ ((packed));
-
-# #define USB_DT_INTERFACE_SIZE		9
-
-# /*-------------------------------------------------------------------------*/
-
-# /* USB_DT_ENDPOINT: Endpoint descriptor */
-# struct usb_endpoint_descriptor {
-# 	__u8  bLength;
-# 	__u8  bDescriptorType;
-
-# 	__u8  bEndpointAddress;
-# 	__u8  bmAttributes;
-# 	__le16 wMaxPacketSize;
-# 	__u8  bInterval;
-
-# 	/* NOTE:  these two are _only_ in audio endpoints. */
-# 	/* use USB_DT_ENDPOINT*_SIZE in bLength, not sizeof. */
-# 	__u8  bRefresh;
-# 	__u8  bSynchAddress;
-# } __attribute__ ((packed));
-
-# #define USB_DT_ENDPOINT_SIZE		7
-# #define USB_DT_ENDPOINT_AUDIO_SIZE	9	/* Audio extension */
 
 
 # /*
@@ -838,25 +622,6 @@ class usb_device_descriptor(ctypes.LittleEndianStructure):
 
 
 # /*-------------------------------------------------------------------------*/
-
-# /* USB_DT_BOS:  group of device-level capabilities */
-# struct usb_bos_descriptor {
-# 	__u8  bLength;
-# 	__u8  bDescriptorType;
-
-# 	__le16 wTotalLength;
-# 	__u8  bNumDeviceCaps;
-# } __attribute__((packed));
-
-# #define USB_DT_BOS_SIZE		5
-# /*-------------------------------------------------------------------------*/
-
-# /* USB_DT_DEVICE_CAPABILITY:  grouped with BOS */
-# struct usb_dev_cap_header {
-# 	__u8  bLength;
-# 	__u8  bDescriptorType;
-# 	__u8  bDevCapabilityType;
-# } __attribute__((packed));
 
 # #define	USB_CAP_TYPE_WIRELESS_USB	1
 

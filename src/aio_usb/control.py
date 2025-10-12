@@ -3,7 +3,7 @@
 
 from typing import Literal, TypedDict
 
-from aio_usb.descriptor import STRING_DESCRIPTOR
+from aio_usb.ch9 import UsbDescriptorType
 
 
 class UsbControlTransferSetup(TypedDict):
@@ -65,7 +65,7 @@ def get_string_descriptor(index: int, lang_id: int) -> UsbControlTransferSetup:
         request_type="standard",
         recipient="device",
         request=GET_DESCRIPTOR,
-        value=(STRING_DESCRIPTOR << 8) | index,
+        value=(UsbDescriptorType.STRING << 8) | index,
         index=lang_id,
     )
 
@@ -75,7 +75,7 @@ def set_string_descriptor(index: int, lang_id: int) -> UsbControlTransferSetup:
         request_type="standard",
         recipient="device",
         request=SET_DESCRIPTOR,
-        value=(STRING_DESCRIPTOR << 8) | index,
+        value=(UsbDescriptorType.STRING << 8) | index,
         index=lang_id,
     )
 

@@ -12,6 +12,8 @@ from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanag
 from typing import Any, ParamSpec, Protocol, TypeVar
 from weakref import WeakValueDictionary
 
+from aio_usb.ch9 import UsbDeviceDescriptor, UsbDirection, UsbRecipient, UsbType
+
 if sys.platform != "linux":
     raise ImportError("This module is only available on Linux")
 
@@ -24,18 +26,7 @@ from aio_usb.control import UsbControlTransferSetup
 from aio_usb.device import UsbDevice
 from aio_usb.discovery import UsbDeviceInfo
 
-from .lib.linux.usb.ch9 import (
-    USB_DIR_IN,
-    USB_RECIP_DEVICE,
-    USB_RECIP_ENDPOINT,
-    USB_RECIP_INTERFACE,
-    USB_RECIP_OTHER,
-    USB_TYPE_CLASS,
-    USB_TYPE_STANDARD,
-    USB_TYPE_VENDOR,
-    usb_ctrlrequest,
-    usb_device_descriptor,
-)
+from .lib.linux.usb.ch9 import usb_ctrlrequest
 from .lib.linux.usbdevice_fs import (
     USBDEVFS_DISCARDURB,
     USBDEVFS_REAPURBNDELAY,
@@ -119,24 +110,13 @@ class LinuxUsbDevice(UsbBackendDevice):
         self._dev_file = dev_file
         # Reading the usbdev file returns the device descriptor and the
         # current configuration descriptor. We just need the device descriptor.
-        self._device_descriptor = usb_device_descriptor.from_buffer_copy(
-            dev_file.read(ctypes.sizeof(usb_device_descriptor))
+        self._device_descriptor = UsbDeviceDescriptor.from_buffer_copy(
+            dev_file.read(ctypes.sizeof(UsbDeviceDescriptor))
         )
 
     @property
-    @override
-    def vendor_id(self) -> int:
-        return self._device_descriptor.idVendor
-
-    @property
-    @override
-    def product_id(self) -> int:
-        return self._device_descriptor.idProduct
-
-    @property
-    @override
-    def version(self) -> int:
-        return self._device_descriptor.bcdDevice
+    def device_descriptor(self) -> UsbDeviceDescriptor:
+        return self._device_descriptor
 
     @override
     async def control_transfer_in(
@@ -153,27 +133,27 @@ class LinuxUsbDevice(UsbBackendDevice):
 
         transfer = Transfer()
 
-        transfer.ctrl_req.bRequestType = USB_DIR_IN
+        transfer.ctrl_req.bRequestType = UsbDirection.IN
 
         match setup["request_type"]:
             case "standard":
-                transfer.ctrl_req.bRequest |= USB_TYPE_STANDARD
+                transfer.ctrl_req.bRequest |= UsbType.STANDARD
             case "class":
-                transfer.ctrl_req.bRequest |= USB_TYPE_CLASS
+                transfer.ctrl_req.bRequest |= UsbType.CLASS
             case "vendor":
-                transfer.ctrl_req.bRequest |= USB_TYPE_VENDOR
+                transfer.ctrl_req.bRequest |= UsbType.VENDOR
             case _:
                 raise TypeError(f"Invalid request_type: {setup['request_type']}")
 
         match setup["recipient"]:
             case "device":
-                transfer.ctrl_req.bRequestType |= USB_RECIP_DEVICE
+                transfer.ctrl_req.bRequestType |= UsbRecipient.DEVICE
             case "interface":
-                transfer.ctrl_req.bRequestType |= USB_RECIP_INTERFACE
+                transfer.ctrl_req.bRequestType |= UsbRecipient.INTERFACE
             case "endpoint":
-                transfer.ctrl_req.bRequestType |= USB_RECIP_ENDPOINT
+                transfer.ctrl_req.bRequestType |= UsbRecipient.ENDPOINT
             case "other":
-                transfer.ctrl_req.bRequestType |= USB_RECIP_OTHER
+                transfer.ctrl_req.bRequestType |= UsbRecipient.OTHER
             case _:
                 raise TypeError(f"Invalid recipient: {setup['recipient']}")
 
@@ -215,6 +195,9 @@ class LinuxUsbDevice(UsbBackendDevice):
                 # fail with EINVAL, which we can ignore.
                 if e.errno != errno.EINVAL:
                     raise
+
+        if urb.status < 0:
+            raise OSError(-urb.status, "USB transfer failed")
 
         return bytes(transfer.data[: urb.actual_length])
 

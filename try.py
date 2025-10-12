@@ -2,6 +2,7 @@ import asyncio
 from contextlib import AsyncExitStack
 
 from aio_usb import find_usb_devices, open_usb_device
+from aio_usb.ch9 import bcd_to_str
 
 
 async def main():
@@ -20,31 +21,28 @@ async def main():
         device = await aenter(open_usb_device(infos[0].device_id))
 
         print(f"Opened device: {device}")
-        print(f"  VID: {device.vendor_id:04x}")
-        print(f"  PID: {device.product_id:04x}")
-        print(f"  Version: {'.'.join(map(str, device.version))}")
-
-        device_descriptor = await device.get_device_descriptor()
-        print("Device Descriptor:", device_descriptor)
+        print(f"  VID: {device.device_descriptor.idVendor:04x}")
+        print(f"  PID: {device.device_descriptor.idProduct:04x}")
+        print(f"  Version: {bcd_to_str(device.device_descriptor.bcdDevice)}")
 
         lang_ids = await device.get_lang_ids()
         print("Supported Language IDs:", lang_ids)
 
-        if device_descriptor.manufacturer_index > 0:
+        if device.device_descriptor.iManufacturer > 0:
             manufacturer = await device.get_string(
-                device_descriptor.manufacturer_index, lang_ids[0]
+                device.device_descriptor.iManufacturer, lang_ids[0]
             )
             print(f"  Manufacturer: {manufacturer}")
 
-        if device_descriptor.product_index > 0:
+        if device.device_descriptor.iProduct > 0:
             product = await device.get_string(
-                device_descriptor.product_index, lang_ids[0]
+                device.device_descriptor.iProduct, lang_ids[0]
             )
             print(f"  Product: {product}")
 
-        if device_descriptor.serial_number_index > 0:
+        if device.device_descriptor.iSerialNumber > 0:
             serial_number = await device.get_string(
-                device_descriptor.serial_number_index, lang_ids[0]
+                device.device_descriptor.iSerialNumber, lang_ids[0]
             )
             print(f"  Serial Number: {serial_number}")
 

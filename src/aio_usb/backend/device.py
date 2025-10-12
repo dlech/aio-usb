@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 
+from aio_usb.ch9 import UsbDeviceDescriptor
 from aio_usb.control import UsbControlTransferSetup
 
 
@@ -13,25 +14,9 @@ class UsbBackendDevice(ABC):
 
     @property
     @abstractmethod
-    def vendor_id(self) -> int:
+    def device_descriptor(self) -> UsbDeviceDescriptor:
         """
-        The USB vendor ID (idVendor).
-        """
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def product_id(self) -> int:
-        """
-        The USB product ID (idProduct).
-        """
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def version(self) -> int:
-        """
-        The USB product version (bcdDevice).
+        The device descriptor.
         """
         raise NotImplementedError
 

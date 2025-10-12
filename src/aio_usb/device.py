@@ -1,19 +1,21 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
+import ctypes
+
 from aio_usb.backend.device import UsbBackendDevice
+from aio_usb.ch9 import (
+    UsbBosDescriptor,
+    UsbConfigDescriptor,
+    UsbDescriptorType,
+    UsbDeviceDescriptor,
+)
 from aio_usb.control import (
     UsbControlTransferSetup,
     get_descriptor,
     get_string_descriptor,
 )
-from aio_usb.descriptor import (
-    DEVICE_DESCRIPTOR,
-    STRING_DESCRIPTOR,
-    DeviceDescriptor,
-    StringDescriptor,
-    StringLangIdDescriptor,
-)
+from aio_usb.descriptor import StringDescriptor, StringLangIdDescriptor
 
 
 class UsbDevice:
@@ -29,48 +31,40 @@ class UsbDevice:
         self._backend = backend
 
     @property
-    def vendor_id(self) -> int:
+    def device_descriptor(self) -> UsbDeviceDescriptor:
         """
-        The USB vendor ID (idVendor).
+        The device descriptor.
         """
-        return self._backend.vendor_id
-
-    @property
-    def product_id(self) -> int:
-        """
-        The USB product ID (idProduct).
-        """
-        return self._backend.product_id
-
-    @property
-    def version(self) -> tuple[int, int, int]:
-        """
-        The USB product version (bcdDevice).
-        """
-        bcd_version = self._backend.version
-        major = (bcd_version >> 8) & 0xFF
-        minor = (bcd_version >> 4) & 0x0F
-        patch = bcd_version & 0x0F
-        return major, minor, patch
+        return self._backend.device_descriptor
 
     async def control_transfer_in(
         self, setup: UsbControlTransferSetup, length: int
     ) -> bytes:
         return await self._backend.control_transfer_in(setup, length)
 
-    async def get_device_descriptor(self) -> DeviceDescriptor:
+    async def get_config_descriptor(self, index: int) -> bytes:
         """
-        Get the device descriptor.
+        Get a configuration descriptor.
+
+        Args:
+            index: The configuration index.
 
         Returns:
-            The device descriptor.
+            The raw configuration descriptor data.
         """
 
         data = await self.control_transfer_in(
-            get_descriptor(DEVICE_DESCRIPTOR, 0), DeviceDescriptor.SIZE
+            get_descriptor(UsbDescriptorType.CONFIGURATION, index),
+            ctypes.sizeof(UsbConfigDescriptor),
         )
 
-        return DeviceDescriptor(data)
+        desc = UsbConfigDescriptor.from_buffer_copy(data)
+
+        data = await self.control_transfer_in(
+            get_descriptor(UsbDescriptorType.CONFIGURATION, index), desc.wTotalLength
+        )
+
+        return data
 
     async def get_lang_ids(self, num: int = 1) -> list[int]:
         """
@@ -84,7 +78,7 @@ class UsbDevice:
         """
 
         data = await self.control_transfer_in(
-            get_descriptor(STRING_DESCRIPTOR, 0), 2 + num * 2
+            get_descriptor(UsbDescriptorType.STRING, 0), 2 + num * 2
         )
 
         desc = StringLangIdDescriptor(data)
@@ -112,3 +106,23 @@ class UsbDevice:
         desc = StringDescriptor(data)
 
         return desc.string
+
+    async def get_bos_descriptor(self) -> bytes:
+        """
+        Get the BOS descriptor.
+
+        Returns:
+            The raw BOS descriptor data.
+        """
+
+        data = await self.control_transfer_in(
+            get_descriptor(UsbDescriptorType.BOS, 0), ctypes.sizeof(UsbBosDescriptor)
+        )
+
+        bos = UsbBosDescriptor.from_buffer_copy(data)
+
+        data = await self.control_transfer_in(
+            get_descriptor(UsbDescriptorType.BOS, 0), bos.wTotalLength
+        )
+
+        return data
