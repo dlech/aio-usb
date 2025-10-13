@@ -12,6 +12,11 @@ from typing_extensions import Protocol
 from .core_foundation import CFDictionaryRef
 from .foundation import NSErrorDomain, NSMutableData
 from .io_kit import IOService
+from .io_kit.usb.apple_usb_definitions import (
+    IOUSBConfigurationDescriptor,
+    IOUSBDeviceDescriptor,
+    IOUSBDeviceRequest,
+)
 
 class IOUSBHostAbortOption(IntEnum):
     Synchronous = ...
@@ -192,130 +197,3 @@ class IOUSBHostDevice(IOUSBHostObject):
         *,
         error: objc_id,
     ) -> bool: ...
-
-class IOUSBDeviceDescriptor(ctypes.Structure):
-    """
-    The structure for storing a USB device descriptor.
-
-    For information about this descriptor type, see section 9.6.1 of the USB 3.2
-    specification at http://www.usb.org.
-    """
-
-    bLength: int
-    """
-    The length of the descriptor in bytes.
-    """
-    bDescriptorType: int
-    """
-    The type of the descriptor.
-    """
-    bcdUSB: int
-    """
-    The USB specification release number with which the device complies.
-    """
-    bDeviceClass: int
-    """
-    The class code indicating the behavior of this device.
-    """
-    bDeviceSubClass: int
-    """
-    The subclass code that further defines the behavior of this device.
-    """
-    bDeviceProtocol: int
-    """
-    The protocol that the device supports.
-    """
-    bMaxPacketSize0: int
-    """
-    The maximum packet size for endpoint 0, specified as an exponent value.
-    """
-    idVendor: int
-    """
-    The ID of the device’s manufacturer.
-    """
-    idProduct: int
-    """
-    The product ID assigned by the manufacturer.
-    """
-    bcdDevice: int
-    """
-    The release number of the device, specified as a binary-coded decimal number.
-    """
-    iManufacturer: int
-    """
-    The index of the string descriptor that describes the manufacturer.
-    """
-    iProduct: int
-    """
-    The index of the string descriptor that describes the product.
-    """
-    iSerialNumber: int
-    """
-    The index of the string descriptor that describes the device’s serial number.
-    """
-    bNumConfigurations: int
-    """
-    The number of configurations that the device supports.
-    """
-
-class IOUSBConfigurationDescriptor(ctypes.Structure):
-    """
-    The structure for storing a USB configuration descriptor.
-
-    This descriptor contains information about a specific configuration of a
-    device, including the interfaces that configuration provides. This structure
-    has a variable length, so it defines only the known fields. Use the
-    wTotalLength field to read the entire descriptor.
-
-    For more information about this descriptor type, see section 9.6.3 of the
-    USB 2.0 specification at http://www.usb.org.
-    """
-
-    bLength: int
-    """
-    The size of the descriptor in bytes.
-    """
-    bDescriptorType: int
-    """
-    The type of the descriptor.
-    """
-    wTotalLength: int
-    """
-    The total length of the descriptor, including the length of all related 
-    interface, endpoint, and vendor-specific descriptors.
-    """
-    bNumInterfaces: int
-    """
-    The number of interfaces this configuration supports.
-    """
-    bConfigurationValue: int
-    """
-    The value to use when selecting this configuration.
-    """
-    iConfiguration: int
-    """
-    The index of the string descriptor that describes this configuration.
-    """
-    bmAttributes: int
-    """
-    A bitmask indicating the configuration's characteristics.
-    """
-    MaxPower: int
-    """
-    The maximum power consumption of the USB device expressed in 2mA units.
-    """
-
-class IOUSBDeviceRequest(ctypes.Structure):
-    bmRequestType: int
-    bRequest: int
-    wValue: int
-    wIndex: int
-    wLength: int
-    def __init__(
-        self,
-        bmRequestType: int = 0,
-        bRequest: int = 0,
-        wValue: int = 0,
-        wIndex: int = 0,
-        wLength: int = 0,
-    ) -> None: ...

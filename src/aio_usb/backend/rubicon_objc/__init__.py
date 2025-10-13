@@ -28,8 +28,10 @@ from aio_usb.backend.rubicon_objc.io_kit import (
     kIOReturnAborted,
     kIOTerminatedNotification,
 )
-from aio_usb.backend.rubicon_objc.io_usb_host import (
+from aio_usb.backend.rubicon_objc.io_kit.usb.apple_usb_definitions import (
     IOUSBDeviceRequest,
+)
+from aio_usb.backend.rubicon_objc.io_usb_host import (
     IOUSBHostAbortOption,
     IOUSBHostDevice,
 )
