@@ -70,3 +70,17 @@ class IOUSBDeviceRequest(ctypes.Structure):
         ("wIndex", ctypes.c_uint16),
         ("wLength", ctypes.c_uint16),
     ]
+
+
+@with_encoding(b"{IOUSBConfigurationDescriptor=CCSCCCCC}")
+class IOUSBConfigurationDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("bLength", ctypes.c_uint8),
+        ("bDescriptorType", ctypes.c_uint8),
+        ("wTotalLength", ctypes.c_uint16),
+        ("bNumInterfaces", ctypes.c_uint8),
+        ("bConfigurationValue", ctypes.c_uint8),
+        ("iConfiguration", ctypes.c_uint8),
+        ("bmAttributes", ctypes.c_uint8),
+        ("MaxPower", ctypes.c_uint8),
+    ]

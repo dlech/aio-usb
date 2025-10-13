@@ -46,5 +46,15 @@ async def main():
             )
             print(f"  Serial Number: {serial_number}")
 
+        cfg = device.configuration_descriptor
+
+        print(f"Configuration: {cfg.bConfigurationValue}")
+
+        if cfg.iConfiguration > 0:
+            config_str = await device.get_string(cfg.iConfiguration, lang_ids[0])
+            print(f"  Configuration name: {config_str}")
+
+        print(f"  Number of Interfaces: {cfg.bNumInterfaces}")
+
 
 asyncio.run(main())

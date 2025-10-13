@@ -3,7 +3,7 @@
 
 from abc import ABC, abstractmethod
 
-from aio_usb.ch9 import UsbControlRequest, UsbDeviceDescriptor
+from aio_usb.ch9 import UsbConfigDescriptor, UsbControlRequest, UsbDeviceDescriptor
 
 
 class UsbBackendDevice(ABC):
@@ -16,6 +16,14 @@ class UsbBackendDevice(ABC):
     def device_descriptor(self) -> UsbDeviceDescriptor:
         """
         The device descriptor.
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def configuration_descriptor(self) -> UsbConfigDescriptor:
+        """
+        The configuration descriptor of the currently selected configuration.
         """
         raise NotImplementedError
 

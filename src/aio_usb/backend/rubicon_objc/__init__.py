@@ -8,8 +8,6 @@ from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
 from typing import Any
 
-from aio_usb.ch9 import UsbControlRequest, UsbDeviceDescriptor
-
 if sys.platform != "darwin":
     raise ImportError("This module is only available on macOS")
 
@@ -36,6 +34,7 @@ from aio_usb.backend.rubicon_objc.io_usb_host import (
     IOUSBHostDevice,
 )
 from aio_usb.backend.rubicon_objc.runtime import NSErrorError, mach_error_string
+from aio_usb.ch9 import UsbConfigDescriptor, UsbControlRequest, UsbDeviceDescriptor
 from aio_usb.device import UsbDevice
 from aio_usb.discovery import UsbDeviceInfo
 
@@ -67,6 +66,14 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
     @override
     def device_descriptor(self) -> UsbDeviceDescriptor:
         return self._device_descriptor
+
+    @property
+    @override
+    def configuration_descriptor(self) -> UsbConfigDescriptor:
+        desc = self._device.configurationDescriptor
+        assert desc, "configuration is not set"
+        # This works since CPU is little-endian.
+        return UsbConfigDescriptor.from_buffer_copy(desc.contents)
 
     @override
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
@@ -207,6 +214,17 @@ async def _open_device(device_id: str) -> AsyncGenerator[Any, UsbDevice]:
         raise NSErrorError(error)
 
     try:
+        # macOS doesn't select a configuration automatically, so we have to do
+        # it ourselves. We just select the first configuration.
+        if not device.configurationDescriptor:
+            desc = device.configurationDescriptorWithIndex(0, error=error)
+            if not desc:
+                raise NSErrorError(error)
+            if not device.configureWithValue(
+                desc.contents.bConfigurationValue, error=error
+            ):
+                raise NSErrorError(error)
+
         yield UsbDevice(RubiconObjCUsbDevice(device))
     finally:
         device.destroy()

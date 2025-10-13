@@ -34,6 +34,13 @@ class UsbDevice:
         """
         return self._backend.device_descriptor
 
+    @property
+    def configuration_descriptor(self) -> UsbConfigDescriptor:
+        """
+        The configuration descriptor of the currently selected configuration.
+        """
+        return self._backend.configuration_descriptor
+
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
         return await self._backend.control_transfer_in(request)
 

@@ -152,6 +152,9 @@ class IOUSBHostObject(NSObject):
         self, option: IOUSBHostAbortOption, /, *, error: objc_id
     ) -> bool: ...
     def abortDeviceRequestsWithError(self, error: objc_id, /) -> bool: ...
+    def configurationDescriptorWithIndex(
+        self, index: int, /, *, error: objc_id
+    ) -> ctypes._Pointer[IOUSBConfigurationDescriptor]: ...  # pyright: ignore[reportPrivateUsage]
 
 class IOUSBHostDevice(IOUSBHostObject):
     @classmethod
@@ -168,8 +171,10 @@ class IOUSBHostDevice(IOUSBHostObject):
         speed: int | None,
         productIDArray: list[int] | None,
     ) -> CFDictionaryRef: ...
-    # @property
-    # def configurationDescriptors(self) -> "IOUSBConfigurationDescriptor": ...
+    @property
+    def configurationDescriptor(
+        self,
+    ) -> ctypes._Pointer[IOUSBDeviceDescriptor]: ...  # pyright: ignore[reportPrivateUsage]
     @overload
     def configureWithValue(
         self,
@@ -178,7 +183,7 @@ class IOUSBHostDevice(IOUSBHostObject):
         *,
         matchInterfaces: bool,
         error: objc_id,
-    ) -> None: ...
+    ) -> bool: ...
     @overload
     def configureWithValue(
         self,
@@ -186,7 +191,7 @@ class IOUSBHostDevice(IOUSBHostObject):
         /,
         *,
         error: objc_id,
-    ) -> None: ...
+    ) -> bool: ...
 
 class IOUSBDeviceDescriptor(ctypes.Structure):
     """
@@ -251,6 +256,53 @@ class IOUSBDeviceDescriptor(ctypes.Structure):
     bNumConfigurations: int
     """
     The number of configurations that the device supports.
+    """
+
+class IOUSBConfigurationDescriptor(ctypes.Structure):
+    """
+    The structure for storing a USB configuration descriptor.
+
+    This descriptor contains information about a specific configuration of a
+    device, including the interfaces that configuration provides. This structure
+    has a variable length, so it defines only the known fields. Use the
+    wTotalLength field to read the entire descriptor.
+
+    For more information about this descriptor type, see section 9.6.3 of the
+    USB 2.0 specification at http://www.usb.org.
+    """
+
+    bLength: int
+    """
+    The size of the descriptor in bytes.
+    """
+    bDescriptorType: int
+    """
+    The type of the descriptor.
+    """
+    wTotalLength: int
+    """
+    The total length of the descriptor, including the length of all related 
+    interface, endpoint, and vendor-specific descriptors.
+    """
+    bNumInterfaces: int
+    """
+    The number of interfaces this configuration supports.
+    """
+    bConfigurationValue: int
+    """
+    The value to use when selecting this configuration.
+    """
+    iConfiguration: int
+    """
+    The index of the string descriptor that describes this configuration.
+    """
+    bmAttributes: int
+    """
+    A bitmask indicating the configuration's characteristics.
+    """
+    MaxPower: int
+    """
+    The maximum power consumption of the USB device expressed in 2mA units.
     """
 
 class IOUSBDeviceRequest(ctypes.Structure):
