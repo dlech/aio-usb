@@ -14,6 +14,8 @@ class IOUSBDescriptorHeader(ctypes.Structure):
     bLength: int
     bDescriptorType: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -95,6 +97,8 @@ class IOUSBDeviceDescriptor(ctypes.Structure):
     The number of configurations that the device supports.
     """
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -170,6 +174,8 @@ class IOUSBConfigurationDescriptor(ctypes.Structure):
     The maximum power consumption of the USB device expressed in 2mA units.
     """
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -203,6 +209,8 @@ class IOUSBInterfaceDescriptor(ctypes.Structure):
     bInterfaceProtocol: int
     iInterface: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -234,6 +242,8 @@ class IOUSBEndpointDescriptor(ctypes.Structure):
     wMaxPacketSize: int
     bInterval: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -261,6 +271,8 @@ class IOUSBDeviceRequest(ctypes.Structure):
     wIndex: int
     wLength: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bmRequestType", ctypes.c_uint8),
@@ -277,6 +289,8 @@ class IOUSBBOSDescriptor(ctypes.Structure):
     wTotalLength: int
     bNumDeviceCaps: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),

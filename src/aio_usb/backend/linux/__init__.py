@@ -120,6 +120,8 @@ class LinuxUsbDevice(UsbBackendDevice):
         class Transfer(ctypes.Structure):
             ctrl_req: UsbControlRequest
             data: ctypes.Array[ctypes.c_uint8]
+            # _pack_ requires _layout_ = "ms" since Python 3.14
+            _layout_ = "ms"
             _pack_ = 1
             _fields_ = [
                 ("ctrl_req", UsbControlRequest),

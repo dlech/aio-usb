@@ -104,6 +104,8 @@ class UsbControlRequest(ctypes.LittleEndianStructure):
     wIndex: int
     wLength: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bmRequestType", ctypes.c_uint8),
@@ -150,6 +152,8 @@ class UsbDescriptorHeader(ctypes.LittleEndianStructure):
     bLength: int
     bDescriptorType: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -173,6 +177,8 @@ class UsbDeviceDescriptor(ctypes.LittleEndianStructure):
     iSerialNumber: int
     bNumConfigurations: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -202,6 +208,8 @@ class UsbConfigDescriptor(ctypes.LittleEndianStructure):
     bmAttributes: int
     bMaxPower: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -237,6 +245,8 @@ class UsbInterfaceDescriptor(ctypes.LittleEndianStructure):
     bInterfaceProtocol: int
     iInterface: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -259,6 +269,8 @@ class UsbEndpointDescriptor(ctypes.LittleEndianStructure):
     wMaxPacketSize: int
     bInterval: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -276,6 +288,8 @@ class UsbBosDescriptor(ctypes.LittleEndianStructure):
     wTotalLength: int
     bNumDeviceCaps: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
@@ -290,6 +304,8 @@ class UsbDevCapHeader(ctypes.LittleEndianStructure):
     bDescriptorType: int
     bDevCapabilityType: int
 
+    # _pack_ requires _layout_ = "ms" since Python 3.14
+    _layout_ = "ms"
     _pack_ = 1
     _fields_ = [
         ("bLength", ctypes.c_uint8),
