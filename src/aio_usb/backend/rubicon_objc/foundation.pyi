@@ -2,10 +2,11 @@
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
 import ctypes
-from typing import ClassVar, Self, TypeAlias
+from typing import ClassVar, Self, TypeAlias, overload
 
 from rubicon.objc import NSArray, NSDictionary, NSObject, NSUInteger, objc_id
 from rubicon.objc.api import NSData
+from rubicon.objc.types import NSRange
 
 class NSString(NSObject):
     string: ClassVar[str]
@@ -68,3 +69,11 @@ class NSMutableData(NSData):
     def length(self) -> int: ...
     @length.setter
     def length(self, value: int) -> None: ...
+    @overload
+    def replaceBytesInRange(self, range: NSRange, /, *, withBytes: bytes) -> None: ...
+    @overload
+    def replaceBytesInRange(
+        self, range: NSRange, /, *, withBytes: bytes, length: int
+    ) -> None: ...
+    def resetBytesInRange(self, range: NSRange, /) -> None: ...
+    def setData(self, data: NSData, /) -> None: ...

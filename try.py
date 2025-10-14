@@ -56,5 +56,12 @@ async def main():
 
         print(f"  Number of Interfaces: {cfg.bNumInterfaces}")
 
+        in_ep = 0x81
+        out_ep = 0x01
+
+        await device.transfer_out(out_ep, b"\x01\x00")
+        data = await device.transfer_in(in_ep, 64)
+        print("Data:", data)
+
 
 asyncio.run(main())

@@ -4,8 +4,29 @@ System/Library/Frameworks/IOKit.framework/Headers/usb/AppleUSBDefinitions.h
 """
 
 import ctypes
+from typing import TYPE_CHECKING, TypeAlias
 
 from rubicon.objc.types import with_encoding
+
+
+@with_encoding(b"{IOUSBDescriptorHeader=CC}")
+class IOUSBDescriptorHeader(ctypes.Structure):
+    bLength: int
+    bDescriptorType: int
+
+    _pack_ = 1
+    _fields_ = [
+        ("bLength", ctypes.c_uint8),
+        ("bDescriptorType", ctypes.c_uint8),
+    ]
+
+
+if TYPE_CHECKING:
+    IOUSBDescriptorHeaderPtr: TypeAlias = ctypes._Pointer[  # pyright: ignore[reportPrivateUsage]
+        IOUSBDescriptorHeader
+    ]
+else:
+    IOUSBDescriptorHeaderPtr = ctypes.POINTER(IOUSBDescriptorHeader)
 
 
 @with_encoding(b"{IOUSBDeviceDescriptor=CCSCCCCSSSCCCC}")
@@ -93,6 +114,14 @@ class IOUSBDeviceDescriptor(ctypes.Structure):
     ]
 
 
+if TYPE_CHECKING:
+    IOUSBDeviceDescriptorPtr: TypeAlias = ctypes._Pointer[  # pyright: ignore[reportPrivateUsage]
+        IOUSBDeviceDescriptor
+    ]
+else:
+    IOUSBDeviceDescriptorPtr = ctypes.POINTER(IOUSBDeviceDescriptor)
+
+
 @with_encoding(b"{IOUSBConfigurationDescriptor=CCSCCCCC}")
 class IOUSBConfigurationDescriptor(ctypes.Structure):
     """
@@ -154,6 +183,76 @@ class IOUSBConfigurationDescriptor(ctypes.Structure):
     ]
 
 
+if TYPE_CHECKING:
+    IOUSBConfigurationDescriptorPtr: TypeAlias = ctypes._Pointer[  # pyright: ignore[reportPrivateUsage]
+        IOUSBConfigurationDescriptor
+    ]
+else:
+    IOUSBConfigurationDescriptorPtr = ctypes.POINTER(IOUSBConfigurationDescriptor)
+
+
+@with_encoding(b"{IOUSBInterfaceDescriptor=CCCCCCCCC}")
+class IOUSBInterfaceDescriptor(ctypes.Structure):
+    bLength: int
+    bDescriptorType: int
+    bInterfaceNumber: int
+    bAlternateSetting: int
+    bNumEndpoints: int
+    bInterfaceClass: int
+    bInterfaceSubClass: int
+    bInterfaceProtocol: int
+    iInterface: int
+
+    _pack_ = 1
+    _fields_ = [
+        ("bLength", ctypes.c_uint8),
+        ("bDescriptorType", ctypes.c_uint8),
+        ("bInterfaceNumber", ctypes.c_uint8),
+        ("bAlternateSetting", ctypes.c_uint8),
+        ("bNumEndpoints", ctypes.c_uint8),
+        ("bInterfaceClass", ctypes.c_uint8),
+        ("bInterfaceSubClass", ctypes.c_uint8),
+        ("bInterfaceProtocol", ctypes.c_uint8),
+        ("iInterface", ctypes.c_uint8),
+    ]
+
+
+if TYPE_CHECKING:
+    IOUSBInterfaceDescriptorPtr: TypeAlias = ctypes._Pointer[  # pyright: ignore[reportPrivateUsage]
+        IOUSBInterfaceDescriptor
+    ]
+else:
+    IOUSBInterfaceDescriptorPtr = ctypes.POINTER(IOUSBInterfaceDescriptor)
+
+
+@with_encoding(b"{IOUSBEndpointDescriptor=CCCCSCC}")
+class IOUSBEndpointDescriptor(ctypes.Structure):
+    bLength: int
+    bDescriptorType: int
+    bEndpointAddress: int
+    bmAttributes: int
+    wMaxPacketSize: int
+    bInterval: int
+
+    _pack_ = 1
+    _fields_ = [
+        ("bLength", ctypes.c_uint8),
+        ("bDescriptorType", ctypes.c_uint8),
+        ("bEndpointAddress", ctypes.c_uint8),
+        ("bmAttributes", ctypes.c_uint8),
+        ("wMaxPacketSize", ctypes.c_uint16),
+        ("bInterval", ctypes.c_uint8),
+    ]
+
+
+if TYPE_CHECKING:
+    IOUSBEndpointDescriptorPtr: TypeAlias = ctypes._Pointer[  # pyright: ignore[reportPrivateUsage]
+        IOUSBEndpointDescriptor
+    ]
+else:
+    IOUSBEndpointDescriptorPtr = ctypes.POINTER(IOUSBEndpointDescriptor)
+
+
 @with_encoding(b"{IOUSBDeviceRequest=CCSSS}")
 class IOUSBDeviceRequest(ctypes.Structure):
     bmRequestType: int
@@ -170,3 +269,26 @@ class IOUSBDeviceRequest(ctypes.Structure):
         ("wIndex", ctypes.c_uint16),
         ("wLength", ctypes.c_uint16),
     ]
+
+
+class IOUSBBOSDescriptor(ctypes.Structure):
+    bLength: int
+    bDescriptorType: int
+    wTotalLength: int
+    bNumDeviceCaps: int
+
+    _pack_ = 1
+    _fields_ = [
+        ("bLength", ctypes.c_uint8),
+        ("bDescriptorType", ctypes.c_uint8),
+        ("wTotalLength", ctypes.c_uint16),
+        ("bNumDeviceCaps", ctypes.c_uint8),
+    ]
+
+
+if TYPE_CHECKING:
+    IOUSBBOSDescriptorPtr: TypeAlias = ctypes._Pointer[  # pyright: ignore[reportPrivateUsage]
+        IOUSBBOSDescriptor
+    ]
+else:
+    IOUSBBOSDescriptorPtr = ctypes.POINTER(IOUSBBOSDescriptor)

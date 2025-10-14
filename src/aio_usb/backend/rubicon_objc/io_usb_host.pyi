@@ -3,19 +3,24 @@
 
 import ctypes
 from enum import IntEnum
-from typing import Self, overload
+from typing import Self, TypeAlias, overload
 
 from rubicon.objc import NSObject, NSTimeInterval
 from rubicon.objc.runtime import objc_id
 from typing_extensions import Protocol
 
 from .core_foundation import CFDictionaryRef
+from .dispatch._queue import DispatchQueue
 from .foundation import NSErrorDomain, NSMutableData
 from .io_kit import IOService
 from .io_kit.usb.apple_usb_definitions import (
-    IOUSBConfigurationDescriptor,
-    IOUSBDeviceDescriptor,
+    IOUSBBOSDescriptorPtr,
+    IOUSBConfigurationDescriptorPtr,
+    IOUSBDescriptorHeaderPtr,
+    IOUSBDeviceDescriptorPtr,
     IOUSBDeviceRequest,
+    IOUSBEndpointDescriptorPtr,
+    IOUSBInterfaceDescriptorPtr,
 )
 
 class IOUSBHostAbortOption(IntEnum):
@@ -23,6 +28,8 @@ class IOUSBHostAbortOption(IntEnum):
     Asynchronous = ...
 
 IOUSBHostErrorDomain: NSErrorDomain
+
+IOUSBHostObjectInitOptions: TypeAlias = int
 
 class IOUSBHostInterestHandler(Protocol):
     def __call__(
@@ -69,13 +76,105 @@ class IOUSBHostCompletionHandler(Protocol):
         """
         ...
 
-class IOUSBHostObject(NSObject):
+class IOUSBHostInterface(IOUSBHostObject):
+    @classmethod
+    def createMatchingDictionaryWithVendorID(
+        cls,
+        vendorID: int | None,
+        /,
+        *,
+        productID: int | None,
+        bcdDevice: int | None,
+        interfaceNumber: int | None,
+        configurationValue: int | None,
+        interfaceClass: int | None,
+        interfaceSubclass: int | None,
+        interfaceProtocol: int | None,
+        speed: int | None,
+        productIDArray: list[int] | None,
+    ) -> CFDictionaryRef: ...
+    @property
+    def configurationDescriptor(
+        self,
+    ) -> IOUSBConfigurationDescriptorPtr: ...
+    @property
+    def interfaceDescriptor(
+        self,
+    ) -> IOUSBInterfaceDescriptorPtr: ...
+    def selectAlternateSetting(
+        self, alternateSetting: int, /, *, error: objc_id
+    ) -> bool: ...
+    def copyPipeWithAddress(
+        self, address: int, /, *, error: objc_id
+    ) -> IOUSBHostPipe | None: ...
+    @property
+    def idleTimeout(self) -> float: ...
+    def setIdleTimeout(self, timeout: float, /, *, error: objc_id) -> bool: ...
+    @overload
     def initWithIOService(
         self,
         service: IOService,
         /,
         *,
-        queue: ctypes.c_void_p | None,
+        options: IOUSBHostObjectInitOptions,
+        queue: DispatchQueue | None,
+        error: objc_id,
+        interestHandler: IOUSBHostInterestHandler | None,
+    ) -> Self | None: ...
+    @overload
+    def initWithIOService(
+        self,
+        service: IOService,
+        /,
+        *,
+        queue: DispatchQueue | None,
+        error: objc_id,
+        interestHandler: IOUSBHostInterestHandler | None,
+    ) -> Self | None: ...
+
+class IOUSBHostPipe(IOUSBHostIOSource):
+    def enqueueIORequestWithData(
+        self,
+        data: NSMutableData,
+        /,
+        *,
+        completionTimeout: float,
+        error: objc_id,
+        completionHandler: IOUSBHostCompletionHandler | None,
+    ) -> bool: ...
+    def sendIORequestWithData(
+        self,
+        data: NSMutableData,
+        /,
+        *,
+        completionTimeout: float,
+        error: objc_id,
+    ) -> bool: ...
+    def abortWithOption(
+        self, option: IOUSBHostAbortOption, /, *, error: objc_id
+    ) -> bool: ...
+    def abortWithError(self, error: objc_id, /) -> bool: ...
+    def clearStallWithError(self, error: objc_id, /) -> bool: ...
+
+class IOUSBHostObject(NSObject):
+    @overload
+    def initWithIOService(
+        self,
+        service: IOService,
+        /,
+        *,
+        options: IOUSBHostObjectInitOptions,
+        queue: DispatchQueue | None,
+        error: objc_id,
+        interestHandler: IOUSBHostInterestHandler | None,
+    ) -> Self | None: ...
+    @overload
+    def initWithIOService(
+        self,
+        service: IOService,
+        /,
+        *,
+        queue: DispatchQueue | None,
         error: objc_id,
         interestHandler: IOUSBHostInterestHandler | None,
     ) -> Self | None:
@@ -109,9 +208,10 @@ class IOUSBHostObject(NSObject):
             When done with the object, call :meth:`destroy`.
         """
         ...
-
     @property
-    def deviceDescriptor(self) -> ctypes._Pointer[IOUSBDeviceDescriptor]: ...  # pyright: ignore[reportPrivateUsage]
+    def ioService(self) -> IOService: ...
+    @property
+    def queue(self) -> DispatchQueue: ...
     def destroy(self) -> None:
         """
         Removes underlying allocations and connections from the USB host object.
@@ -122,7 +222,9 @@ class IOUSBHostObject(NSObject):
         times has no effect.
         """
         ...
-
+    def ioDataWithCapacity(
+        self, capacity: int, /, *, error: objc_id
+    ) -> NSMutableData | None: ...
     @overload
     def enqueueDeviceRequest(
         self,
@@ -157,9 +259,24 @@ class IOUSBHostObject(NSObject):
         self, option: IOUSBHostAbortOption, /, *, error: objc_id
     ) -> bool: ...
     def abortDeviceRequestsWithError(self, error: objc_id, /) -> bool: ...
+    @property
+    def deviceAddress(self) -> int: ...
+    def frameNumberWithTime(self, time: int, /) -> int: ...
+    @property
+    def capabilityDescriptors(self) -> IOUSBBOSDescriptorPtr: ...
+    @property
+    def deviceDescriptor(self) -> IOUSBDeviceDescriptorPtr: ...
     def configurationDescriptorWithIndex(
         self, index: int, /, *, error: objc_id
-    ) -> ctypes._Pointer[IOUSBConfigurationDescriptor]: ...  # pyright: ignore[reportPrivateUsage]
+    ) -> IOUSBConfigurationDescriptorPtr: ...
+
+class IOUSBHostIOSource(NSObject):
+    @property
+    def deviceAddress(self) -> int: ...
+    @property
+    def endpointAddress(self) -> int: ...
+    @property
+    def hostInterface(self) -> IOUSBHostInterface: ...
 
 class IOUSBHostDevice(IOUSBHostObject):
     @classmethod
@@ -179,7 +296,7 @@ class IOUSBHostDevice(IOUSBHostObject):
     @property
     def configurationDescriptor(
         self,
-    ) -> ctypes._Pointer[IOUSBDeviceDescriptor]: ...  # pyright: ignore[reportPrivateUsage]
+    ) -> IOUSBConfigurationDescriptorPtr: ...
     @overload
     def configureWithValue(
         self,
@@ -197,3 +314,13 @@ class IOUSBHostDevice(IOUSBHostObject):
         *,
         error: objc_id,
     ) -> bool: ...
+
+def IOUSBGetNextInterfaceDescriptor(
+    configurationDescriptor: IOUSBConfigurationDescriptorPtr,
+    currentDescriptor: IOUSBDescriptorHeaderPtr | None,
+) -> IOUSBInterfaceDescriptorPtr: ...
+def IOUSBGetNextEndpointDescriptor(
+    configurationDescriptor: IOUSBConfigurationDescriptorPtr,
+    interfaceDescriptor: IOUSBInterfaceDescriptorPtr,
+    currentDescriptor: IOUSBDescriptorHeaderPtr | None,
+) -> IOUSBEndpointDescriptorPtr: ...

@@ -30,3 +30,11 @@ class UsbBackendDevice(ABC):
     @abstractmethod
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
         raise NotImplementedError
+
+    @abstractmethod
+    async def transfer_in(self, endpoint_address: int, length: int) -> bytes:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def transfer_out(self, endpoint_address: int, data: bytes) -> int:
+        raise NotImplementedError
