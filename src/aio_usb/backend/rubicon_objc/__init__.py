@@ -47,7 +47,7 @@ from aio_usb.backend.rubicon_objc.io_usb_host import (
     IOUSBHostInterface,
 )
 from aio_usb.backend.rubicon_objc.runtime import NSErrorError, mach_error_string
-from aio_usb.ch9 import UsbConfigDescriptor, UsbControlRequest, UsbDeviceDescriptor
+from aio_usb.ch9 import UsbControlRequest
 from aio_usb.device import UsbDevice
 from aio_usb.discovery import UsbDeviceInfo
 
@@ -200,29 +200,63 @@ async def _open_interface(
 class RubiconObjCUsbDevice(UsbBackendDevice):
     def __init__(self, device: IOUSBHostDevice) -> None:
         self._device = device
-        # This works since CPU is little-endian.
-        self._device_descriptor = UsbDeviceDescriptor.from_buffer_copy(
-            device.deviceDescriptor.contents
-        )
+        self._properties = IORegistryEntry.from_handle(device.ioService).properties
+
+    @property
+    @override
+    def vendor_id(self) -> int:
+        return self._properties["idVendor"]
+
+    @property
+    @override
+    def product_id(self) -> int:
+        return self._properties["idProduct"]
+
+    @property
+    @override
+    def bcd_device(self) -> int:
+        return self._properties["bcdDevice"]
+
+    @property
+    @override
+    def bcd_usb(self) -> int:
+        return self._properties["bcdUSB"]
+
+    @property
+    @override
+    def class_(self) -> int:
+        return self._properties["bDeviceClass"]
+
+    @property
+    @override
+    def subclass(self) -> int:
+        return self._properties["bDeviceSubClass"]
+
+    @property
+    @override
+    def protocol(self) -> int:
+        return self._properties["bDeviceProtocol"]
+
+    @property
+    @override
+    def manufacturer_name(self) -> str | None:
+        return self._properties.get("kUSBVendorString")
+
+    @property
+    @override
+    def product_name(self) -> str | None:
+        return self._properties.get("kUSBProductString")
+
+    @property
+    @override
+    def serial_number(self) -> str | None:
+        return self._properties.get("kUSBSerialNumberString")
 
     @override
     def open_interface(
         self, match: UsbInterfaceMatch, alternate: int
     ) -> AbstractAsyncContextManager[UsbInterface, bool | None]:
         return _open_interface(self._device, match, alternate)
-
-    @property
-    @override
-    def device_descriptor(self) -> UsbDeviceDescriptor:
-        return self._device_descriptor
-
-    @property
-    @override
-    def configuration_descriptor(self) -> UsbConfigDescriptor:
-        desc = self._device.configurationDescriptor
-        assert desc, "configuration is not set"
-        # This works since CPU is little-endian.
-        return UsbConfigDescriptor.from_buffer_copy(desc.contents)
 
     @override
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
@@ -301,11 +335,11 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
             raise ValueError("No such endpoint found")
 
         match = IOUSBHostInterface.createMatchingDictionaryWithVendorID(
-            self.device_descriptor.idVendor,
-            productID=self.device_descriptor.idProduct,
+            self.vendor_id,
+            productID=self.product_id,
             bcdDevice=None,
             interfaceNumber=iface_desc.contents.bInterfaceNumber,
-            configurationValue=self.configuration_descriptor.bConfigurationValue,
+            configurationValue=self._device.configurationDescriptor.contents.bConfigurationValue,
             interfaceClass=None,
             interfaceSubclass=None,
             interfaceProtocol=None,
@@ -399,11 +433,11 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
             raise ValueError("No such endpoint found")
 
         match = IOUSBHostInterface.createMatchingDictionaryWithVendorID(
-            self.device_descriptor.idVendor,
-            productID=self.device_descriptor.idProduct,
+            self.vendor_id,
+            productID=self.product_id,
             bcdDevice=None,
             interfaceNumber=iface_desc.contents.bInterfaceNumber,
-            configurationValue=self.configuration_descriptor.bConfigurationValue,
+            configurationValue=self._device.configurationDescriptor.contents.bConfigurationValue,
             interfaceClass=None,
             interfaceSubclass=None,
             interfaceProtocol=None,

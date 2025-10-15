@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from contextlib import AbstractAsyncContextManager
 
 from aio_usb.backend.interface import UsbInterfaceMatch
-from aio_usb.ch9 import UsbConfigDescriptor, UsbControlRequest, UsbDeviceDescriptor
+from aio_usb.ch9 import UsbControlRequest
 from aio_usb.interface import UsbInterface
 
 
@@ -16,18 +16,52 @@ class UsbBackendDevice(ABC):
 
     @property
     @abstractmethod
-    def device_descriptor(self) -> UsbDeviceDescriptor:
-        """
-        The device descriptor.
-        """
+    def vendor_id(self) -> int:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def configuration_descriptor(self) -> UsbConfigDescriptor:
-        """
-        The configuration descriptor of the currently selected configuration.
-        """
+    def product_id(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def bcd_device(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def bcd_usb(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def class_(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def subclass(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def protocol(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def manufacturer_name(self) -> str | None:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def product_name(self) -> str | None:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def serial_number(self) -> str | None:
         raise NotImplementedError
 
     @abstractmethod

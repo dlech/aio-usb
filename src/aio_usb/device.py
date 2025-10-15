@@ -12,7 +12,8 @@ from aio_usb.ch9 import (
     UsbConfigDescriptor,
     UsbControlRequest,
     UsbDescriptorType,
-    UsbDeviceDescriptor,
+    bcd_to_str,
+    parse_bcd,
 )
 from aio_usb.control import get_descriptor, get_string_descriptor
 from aio_usb.descriptor import StringDescriptor, StringLangIdDescriptor
@@ -30,6 +31,90 @@ class UsbDevice:
             backend: The backend-specific device object.
         """
         self._backend = backend
+
+    @property
+    def vendor_id(self) -> int:
+        """
+        The USB vendor ID (idVendor).
+        """
+        return self._backend.vendor_id
+
+    @property
+    def product_id(self) -> int:
+        """
+        The USB product ID (idProduct).
+        """
+        return self._backend.product_id
+
+    @property
+    def version(self) -> tuple[int, int, int]:
+        """
+        The USB device version (bcdDevice).
+        """
+        return parse_bcd(self._backend.bcd_device)
+
+    @property
+    def version_str(self) -> str:
+        """
+        The USB device version (bcdDevice) as a string.
+        """
+        return bcd_to_str(self._backend.bcd_device)
+
+    @property
+    def usb_version(self) -> tuple[int, int, int]:
+        """
+        The USB version supported by the device (bcdUSB).
+        """
+        return parse_bcd(self._backend.bcd_usb)
+
+    @property
+    def usb_version_str(self) -> str:
+        """
+        The USB version supported by the device (bcdUSB) as a string.
+        """
+        return bcd_to_str(self._backend.bcd_usb)
+
+    @property
+    def class_(self) -> int:
+        """
+        The USB device class (bDeviceClass).
+        """
+        return self._backend.class_
+
+    @property
+    def subclass(self) -> int:
+        """
+        The USB device subclass (bDeviceSubClass).
+        """
+        return self._backend.subclass
+
+    @property
+    def protocol(self) -> int:
+        """
+        The USB device protocol (bDeviceProtocol).
+        """
+        return self._backend.protocol
+
+    @property
+    def manufacturer_name(self) -> str | None:
+        """
+        The manufacturer name, if available.
+        """
+        return self._backend.manufacturer_name
+
+    @property
+    def product_name(self) -> str | None:
+        """
+        The product name, if available.
+        """
+        return self._backend.product_name
+
+    @property
+    def serial_number(self) -> str | None:
+        """
+        The serial number, if available.
+        """
+        return self._backend.serial_number
 
     @overload
     def open_interface(
@@ -90,20 +175,6 @@ class UsbDevice:
             match["protocol"] = protocol
 
         return self._backend.open_interface(match, alternate)
-
-    @property
-    def device_descriptor(self) -> UsbDeviceDescriptor:
-        """
-        The device descriptor.
-        """
-        return self._backend.device_descriptor
-
-    @property
-    def configuration_descriptor(self) -> UsbConfigDescriptor:
-        """
-        The configuration descriptor of the currently selected configuration.
-        """
-        return self._backend.configuration_descriptor
 
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
         return await self._backend.control_transfer_in(request)

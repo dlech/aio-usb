@@ -11,7 +11,7 @@ from typing_extensions import Protocol
 
 from .core_foundation import CFDictionaryRef
 from .dispatch._queue import DispatchQueue
-from .foundation import NSErrorDomain, NSMutableData
+from .foundation import NSErrorDomain, NSMutableData, NSString
 from .io_kit import IOService
 from .io_kit.usb.apple_usb_definitions import (
     IOUSBBOSDescriptorPtr,
@@ -324,3 +324,5 @@ def IOUSBGetNextEndpointDescriptor(
     interfaceDescriptor: IOUSBInterfaceDescriptorPtr,
     currentDescriptor: IOUSBDescriptorHeaderPtr | None,
 ) -> IOUSBEndpointDescriptorPtr: ...
+
+IOUSBHostDevicePropertyKeyVendorString: NSString
