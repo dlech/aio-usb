@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
 
 from ..core_foundation import CFDictionaryRef
+from ..io_kit._kernel import boolean_t
 from ..runtime import mach_error_string
 from ._driver_kit import kern_return_t, mach_port_t
 from ._iterator import IOIterator, io_iterator_t
@@ -46,9 +47,17 @@ class IOService(IOObject):
     https://developer.apple.com/documentation/iokit/io_service_t?language=objc
     """
 
-    @classmethod
+    @staticmethod
+    def from_handle(handle: int) -> "IOService":
+        """
+        Create an IOService object from a raw handle.
+        """
+        service = IOService(handle)
+        service.retain()
+        return service
+
+    @staticmethod
     def add_matching_notification(
-        cls,
         notify_port: IONotificationPortRef,
         notification_type: bytes,
         matching: CFDictionaryRef,
@@ -81,9 +90,9 @@ class IOService(IOObject):
 
         return iterator
 
-    @classmethod
+    @staticmethod
     def get_matching_service(
-        cls, matching: CFDictionaryRef, port: int = 0
+        matching: CFDictionaryRef, port: int = 0
     ) -> "IOService | None":
         """
         Looks up a registered IOService object that matches a matching dictionary.
@@ -102,9 +111,9 @@ class IOService(IOObject):
         # IOServiceGetMatchingService steals reference from matching
         return IOServiceGetMatchingService(port, matching.retain())
 
-    @classmethod
+    @staticmethod
     def get_matching_services(
-        cls, matching: CFDictionaryRef, port: int = 0
+        matching: CFDictionaryRef, port: int = 0
     ) -> Iterable["IOService"]:
         """
         Looks up registered IOService objects that match a matching dictionary.
@@ -125,6 +134,22 @@ class IOService(IOObject):
             return iter(())
 
         return (obj.as_(IOService) for obj in iterator)
+
+    def match_property_table(self, matching: CFDictionaryRef) -> bool:
+        """
+        Match an IOService objects with matching dictionary.
+
+        Args:
+            matching:
+                A CF dictionary containing matching information.
+
+        Returns:
+            ``True`` if the service matches, ``False`` otherwise.
+
+        Raises:
+            OSError: On failure.
+        """
+        return IOServiceMatchPropertyTable(self, matching)
 
 
 # Alias to match the C type name for use in function signatures to match
@@ -370,3 +395,48 @@ def _errcheck_IOServiceGetMatchingServices(
 
 
 IOServiceGetMatchingServices.errcheck = _errcheck_IOServiceGetMatchingServices  # type: ignore
+
+
+class _IOServiceMatchPropertyTable(Protocol):
+    def __call__(self, service: IOService, matching: CFDictionaryRef) -> bool:
+        """
+        Match an IOService objects with matching dictionary.
+
+        Args:
+            service:
+                The IOService object to match.
+            matching:
+                A CF dictionary containing matching information. IOKitLib can
+            construct matching dictionaries for common criteria with helper functions such as IOServiceMatching, IOServiceNameMatching, IOBSDNameMatching.
+
+        Returns:
+            ``True`` if the service matches, ``False`` otherwise.
+
+        Raises:
+            OSError: On failure.
+
+        This function calls the matching method of an IOService object and returns the boolean result.
+        """
+        ...
+
+
+IOServiceMatchPropertyTable: _IOServiceMatchPropertyTable = ctypes.CFUNCTYPE(
+    kern_return_t, io_service_t, CFDictionaryRef, ctypes.POINTER(boolean_t)
+)(
+    ("IOServiceMatchPropertyTable", IOKitLib),
+    ((1, "service"), (1, "matching"), (2, "matches")),
+)
+
+
+def _errcheck_IOServiceMatchPropertyTable(
+    result: kern_return_t,
+    func: _IOServiceMatchPropertyTable,
+    args: tuple[io_service_t, CFDictionaryRef, boolean_t],
+) -> bool:
+    if result.value != 0:
+        raise OSError(result.value, mach_error_string(result.value))
+
+    return bool(args[2].value)
+
+
+IOServiceMatchPropertyTable.errcheck = _errcheck_IOServiceMatchPropertyTable  # type: ignore

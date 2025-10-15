@@ -8,6 +8,9 @@ from collections.abc import AsyncGenerator, Iterable
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
 from typing import Any
 
+from aio_usb.backend.interface import UsbBackendInterface, UsbInterfaceMatch
+from aio_usb.interface import UsbInterface
+
 if sys.platform != "darwin":
     raise ImportError("This module is only available on macOS")
 
@@ -92,6 +95,108 @@ def _iterate_endpoint_descriptors(
         )
 
 
+class RubiconObjCUsbInterface(UsbBackendInterface):
+    def __init__(self, iface: IOUSBHostInterface) -> None:
+        self._iface = iface
+
+    @property
+    @override
+    def interface_number(self) -> int:
+        return self._iface.interfaceDescriptor.contents.bInterfaceNumber
+
+    @property
+    @override
+    def alternate_setting(self) -> int:
+        return self._iface.interfaceDescriptor.contents.bAlternateSetting
+
+    @property
+    @override
+    def interface_class(self) -> int:
+        return self._iface.interfaceDescriptor.contents.bInterfaceClass
+
+    @property
+    @override
+    def interface_subclass(self) -> int:
+        return self._iface.interfaceDescriptor.contents.bInterfaceSubClass
+
+    @property
+    @override
+    def interface_protocol(self) -> int:
+        return self._iface.interfaceDescriptor.contents.bInterfaceProtocol
+
+    @property
+    @override
+    def description(self) -> str | None:
+        raise NotImplementedError(
+            "Need to find a way to get this from the IORegistryEntry"
+        )
+
+
+@asynccontextmanager
+async def _open_interface(
+    device: IOUSBHostDevice,
+    match: UsbInterfaceMatch,
+    alternate: int,
+) -> AsyncGenerator[Any, UsbInterface]:
+    interface_number = match.get("number")
+    interface_class = match.get("class_")
+    interface_subclass = match.get("subclass")
+    interface_protocol = match.get("protocol")
+
+    # NB: This won't match anything if we don't follow the specific rules for
+    # combinations of keys in the dictionary.
+    vendor_id = (
+        device.deviceDescriptor.contents.idVendor
+        if interface_number is not None or interface_class == 0xFF
+        else None
+    )
+    product_id = (
+        device.deviceDescriptor.contents.idProduct
+        if interface_number is not None
+        else None
+    )
+    configuration_value = (
+        device.configurationDescriptor.contents.bConfigurationValue
+        if interface_number is not None
+        else None
+    )
+
+    match_dict = IOUSBHostInterface.createMatchingDictionaryWithVendorID(
+        vendor_id,
+        productID=product_id,
+        bcdDevice=None,
+        interfaceNumber=interface_number,
+        configurationValue=configuration_value,
+        interfaceClass=interface_class,
+        interfaceSubclass=interface_subclass,
+        interfaceProtocol=interface_protocol,
+        speed=None,
+        productIDArray=None,
+    )
+
+    for child in IORegistryEntry.from_handle(device.ioService).get_child_iterator():
+        service = child.as_(IOService)
+        if service.match_property_table(match_dict):
+            break
+    else:
+        raise ValueError("No such interface found")
+
+    error = objc_id()
+    iface = IOUSBHostInterface.alloc().initWithIOService(
+        service, options=0, queue=None, error=error, interestHandler=None
+    )
+    if iface is None:
+        raise NSErrorError(error)
+
+    try:
+        if not iface.selectAlternateSetting(alternate, error=error):
+            raise NSErrorError(error)
+
+        yield UsbInterface(RubiconObjCUsbInterface(iface))
+    finally:
+        iface.destroy()
+
+
 class RubiconObjCUsbDevice(UsbBackendDevice):
     def __init__(self, device: IOUSBHostDevice) -> None:
         self._device = device
@@ -99,6 +204,12 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
         self._device_descriptor = UsbDeviceDescriptor.from_buffer_copy(
             device.deviceDescriptor.contents
         )
+
+    @override
+    def open_interface(
+        self, match: UsbInterfaceMatch, alternate: int
+    ) -> AbstractAsyncContextManager[UsbInterface, bool | None]:
+        return _open_interface(self._device, match, alternate)
 
     @property
     @override

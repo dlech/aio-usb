@@ -51,3 +51,67 @@ IOUSBGetNextEndpointDescriptor = ctypes.CFUNCTYPE(
         (1, "currentDescriptor"),
     ),
 )
+
+# Registry property names
+
+IOUSBHostMatchingPropertyKeyVendorID = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyVendorID"
+)
+IOUSBHostMatchingPropertyKeyProductID = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyProductID"
+)
+IOUSBHostMatchingPropertyKeyProductIDMask = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyProductIDMask"
+)
+IOUSBHostMatchingPropertyKeyProductIDArray = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyProductIDArray"
+)
+IOUSBHostMatchingPropertyKeyInterfaceNumber = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyInterfaceNumber"
+)
+IOUSBHostMatchingPropertyKeyConfigurationValue = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyConfigurationValue"
+)
+IOUSBHostMatchingPropertyKeyDeviceReleaseNumber = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyDeviceReleaseNumber"
+)
+IOUSBHostMatchingPropertyKeyInterfaceClass = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyInterfaceClass"
+)
+IOUSBHostMatchingPropertyKeyInterfaceSubClass = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyInterfaceSubClass"
+)
+IOUSBHostMatchingPropertyKeyInterfaceProtocol = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyInterfaceProtocol"
+)
+IOUSBHostMatchingPropertyKeyProductIDMask = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyProductIDMask"
+)
+IOUSBHostMatchingPropertyKeyDeviceClass = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyDeviceClass"
+)
+IOUSBHostMatchingPropertyKeyDeviceSubClass = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyDeviceSubClass"
+)
+IOUSBHostMatchingPropertyKeyDeviceProtocol = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeyDeviceProtocol"
+)
+IOUSBHostMatchingPropertyKeySpeed = objc_const(
+    IOUSBHost, "IOUSBHostMatchingPropertyKeySpeed"
+)
+
+
+IOUSBHostPropertyKeyLocationID = objc_const(IOUSBHost, "IOUSBHostPropertyKeyLocationID")
+
+IOUSBHostDevicePropertyKeyVendorString = objc_const(
+    IOUSBHost, "IOUSBHostDevicePropertyKeyVendorString"
+)
+IOUSBHostDevicePropertyKeySerialNumberString = objc_const(
+    IOUSBHost, "IOUSBHostDevicePropertyKeySerialNumberString"
+)
+IOUSBHostDevicePropertyKeyContainerID = objc_const(
+    IOUSBHost, "IOUSBHostDevicePropertyKeyContainerID"
+)
+IOUSBHostDevicePropertyKeyCurrentConfiguration = objc_const(
+    IOUSBHost, "IOUSBHostDevicePropertyKeyCurrentConfiguration"
+)

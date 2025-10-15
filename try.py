@@ -56,12 +56,25 @@ async def main():
 
         print(f"  Number of Interfaces: {cfg.bNumInterfaces}")
 
-        in_ep = 0x81
-        out_ep = 0x01
+        iface = await aenter(device.open_interface(number=0))
+        # iface = await aenter(
+        #     device.open_interface(class_=0xFF, subclass=0xC5, protocol=0xF5)
+        # )
 
-        await device.transfer_out(out_ep, b"\x01\x00")
-        data = await device.transfer_in(in_ep, 64)
-        print("Data:", data)
+        print(f"Opened interface: {iface}")
+        print(f"  Interface Number: {iface.interface_number}")
+        print(f"  Alternate Setting: {iface.alternate_setting}")
+        print(f"  Class: {iface.interface_class:02x}")
+        print(f"  Subclass: {iface.interface_subclass:02x}")
+        print(f"  Protocol: {iface.interface_protocol:02x}")
+        # print(f"  Description: {iface.description}")
+
+        # in_ep = 0x81
+        # out_ep = 0x01
+
+        # await device.transfer_out(out_ep, b"\x01\x00")
+        # data = await device.transfer_in(in_ep, 64)
+        # print("Data:", data)
 
 
 asyncio.run(main())

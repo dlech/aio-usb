@@ -13,6 +13,8 @@ from rubicon.objc import (
 from ..core_foundation import CFAllocatorRef, CFMutableDictionaryRef
 from ..runtime import mach_error_string
 from ._driver_kit import IOOptionBits, kern_return_t
+from ._io_kit_keys import kIOServicePlane
+from ._iterator import IOIterator, io_iterator_t
 from ._kernel import io_name_t
 from ._object import IOObject
 from ._runtime import IOKitLib
@@ -22,6 +24,15 @@ class IORegistryEntry(IOObject):
     """
     https://developer.apple.com/documentation/iokit/io_registry_entry_t?language=objc
     """
+
+    @staticmethod
+    def from_handle(handle: int) -> "IORegistryEntry":
+        """
+        Create an IORegistryEntry object from a raw handle.
+        """
+        entry = IORegistryEntry(handle)
+        entry.retain()
+        return entry
 
     @property
     def name(self) -> str:
@@ -65,6 +76,9 @@ class IORegistryEntry(IOObject):
         return py_from_ns(
             NSDictionary(IORegistryEntryCreateCFProperties(self, None, 0))
         )
+
+    def get_child_iterator(self, plane: bytes = kIOServicePlane) -> IOIterator:
+        return IORegistryEntryGetChildIterator(self, plane)
 
 
 # Alias to match the C type name for use in function signatures to match
@@ -271,4 +285,61 @@ def _errcheck_IORegistryEntryCreateCFProperties(
 
 IORegistryEntryCreateCFProperties.errcheck = (  # type: ignore
     _errcheck_IORegistryEntryCreateCFProperties
+)
+
+
+class _IORegistryEntryGetChildIterator(Protocol):
+    def __call__(
+        self,
+        entry: IORegistryEntry,
+        plane: bytes,
+    ) -> IOIterator:
+        """
+        Returns an iterator over a registry entry’s child entries in a plane.
+
+        Args:
+            entry:
+                The registry entry whose children to iterate over.
+
+            plane:
+                The name of an existing registry plane. Plane names are defined
+                in IOKitKeys.h, for example, kIOServicePlane.
+
+            iterator:
+                The created iterator over the children of the entry.
+
+        Raises:
+            OSError: On failure.
+
+        This method creates an iterator which will return each of a registry entry's child entries in a specified plane.
+
+        https://developer.apple.com/documentation/iokit/1514703-ioregistryentrygetchilditerator?language=objc
+        """
+        ...
+
+
+IORegistryEntryGetChildIterator: _IORegistryEntryGetChildIterator = ctypes.CFUNCTYPE(
+    kern_return_t,
+    io_registry_entry_t,
+    ctypes.c_char_p,
+    ctypes.POINTER(io_iterator_t),
+)(
+    ("IORegistryEntryGetChildIterator", IOKitLib),
+    ((1, "entry"), (1, "plane"), (2, "iterator")),
+)
+
+
+def _errcheck_IORegistryEntryGetChildIterator(
+    result: kern_return_t,
+    func: _IORegistryEntryGetChildIterator,
+    args: tuple[io_registry_entry_t, bytes, io_iterator_t],
+) -> IOIterator:
+    if result.value != 0:
+        raise OSError(result.value, mach_error_string(result.value))
+
+    return args[2]
+
+
+IORegistryEntryGetChildIterator.errcheck = (  # type: ignore
+    _errcheck_IORegistryEntryGetChildIterator
 )

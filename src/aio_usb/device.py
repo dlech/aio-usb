@@ -2,8 +2,11 @@
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
 import ctypes
+from contextlib import AbstractAsyncContextManager
+from typing import overload
 
 from aio_usb.backend.device import UsbBackendDevice
+from aio_usb.backend.interface import UsbInterfaceMatch
 from aio_usb.ch9 import (
     UsbBosDescriptor,
     UsbConfigDescriptor,
@@ -13,6 +16,7 @@ from aio_usb.ch9 import (
 )
 from aio_usb.control import get_descriptor, get_string_descriptor
 from aio_usb.descriptor import StringDescriptor, StringLangIdDescriptor
+from aio_usb.interface import UsbInterface
 
 
 class UsbDevice:
@@ -26,6 +30,66 @@ class UsbDevice:
             backend: The backend-specific device object.
         """
         self._backend = backend
+
+    @overload
+    def open_interface(
+        self,
+        *,
+        number: int | None = None,
+        alternate: int = 0,
+    ) -> AbstractAsyncContextManager[UsbInterface]: ...
+    @overload
+    def open_interface(
+        self,
+        *,
+        class_: int | None = None,
+        subclass: int | None = None,
+        protocol: int | None = None,
+        alternate: int = 0,
+    ) -> AbstractAsyncContextManager[UsbInterface]: ...
+    def open_interface(
+        self,
+        *,
+        number: int | None = None,
+        class_: int | None = None,
+        subclass: int | None = None,
+        protocol: int | None = None,
+        alternate: int = 0,
+    ) -> AbstractAsyncContextManager[UsbInterface]:
+        """
+        Open a USB interface for communication.
+
+        Args:
+            number: The interface number to match (bInterfaceNumber)
+            class_: The interface class to match (bInterfaceClass)
+            subclass: The interface subclass to match (bInterfaceSubClass)
+            protocol: The interface protocol to match (bInterfaceProtocol)
+            alternate: The alternate setting to select (bAlternateSetting)
+
+        Returns:
+            An asynchronous context manager that yields the opened interface.
+
+        Either specify only ``number`` or a combination of ``class_``, ``subclass``, and
+        ``protocol``.
+        """
+        if number is not None and (
+            class_ is not None or subclass is not None or protocol is not None
+        ):
+            raise TypeError(
+                "Specify either number or class_/subclass/protocol, not both"
+            )
+
+        match: UsbInterfaceMatch = {}
+        if number is not None:
+            match["number"] = number
+        if class_ is not None:
+            match["class_"] = class_
+        if subclass is not None:
+            match["subclass"] = subclass
+        if protocol is not None:
+            match["protocol"] = protocol
+
+        return self._backend.open_interface(match, alternate)
 
     @property
     def device_descriptor(self) -> UsbDeviceDescriptor:
