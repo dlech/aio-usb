@@ -48,12 +48,13 @@ async def main():
         print(f"  Protocol: {iface.interface_protocol:02x}")
         # print(f"  Description: {iface.description}")
 
-        # in_ep = 0x81
-        # out_ep = 0x01
+        out_pipe = await aenter(iface.open_out_pipe())
+        in_pipe = await aenter(iface.open_in_pipe())
 
-        # await device.transfer_out(out_ep, b"\x01\x00")
-        # data = await device.transfer_in(in_ep, 64)
-        # print("Data:", data)
+        await out_pipe.transfer(b"\x01\x00")
+        data = await in_pipe.transfer(64)
+
+        print("Received data:", data)
 
 
 asyncio.run(main())

@@ -69,14 +69,6 @@ class UsbBackendDevice(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def transfer_in(self, endpoint_address: int, length: int) -> bytes:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def transfer_out(self, endpoint_address: int, data: bytes) -> int:
-        raise NotImplementedError
-
-    @abstractmethod
     def open_interface(
         self,
         match: UsbInterfaceMatch,

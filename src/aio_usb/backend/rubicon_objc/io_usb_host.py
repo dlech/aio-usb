@@ -20,6 +20,7 @@ IOUSBHost = load_library("IOUSBHost")
 IOUSBHostObject = ObjCClass("IOUSBHostObject")
 IOUSBHostDevice = ObjCClass("IOUSBHostDevice")
 IOUSBHostInterface = ObjCClass("IOUSBHostInterface")
+IOUSBHostPipe = ObjCClass("IOUSBHostPipe")
 
 IOUSBHostErrorDomain = objc_const(IOUSBHost, "IOUSBHostErrorDomain")
 

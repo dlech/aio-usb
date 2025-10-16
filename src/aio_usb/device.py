@@ -179,18 +179,6 @@ class UsbDevice:
     async def control_transfer_in(self, request: UsbControlRequest) -> bytes:
         return await self._backend.control_transfer_in(request)
 
-    async def transfer_in(self, endpoint_address: int, length: int) -> bytes:
-        """
-        Perform a bulk or interrupt IN transfer (device to host).
-        """
-        return await self._backend.transfer_in(endpoint_address, length)
-
-    async def transfer_out(self, endpoint_address: int, data: bytes) -> int:
-        """
-        Perform a bulk or interrupt OUT transfer (host to device).
-        """
-        return await self._backend.transfer_out(endpoint_address, data)
-
     async def get_config_descriptor(self, index: int) -> bytes:
         """
         Get a configuration descriptor.

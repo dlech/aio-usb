@@ -4,12 +4,9 @@
 import asyncio
 import ctypes
 import sys
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, ExitStack, asynccontextmanager
-from typing import Any
-
-from aio_usb.backend.interface import UsbBackendInterface, UsbInterfaceMatch
-from aio_usb.interface import UsbInterface
+from typing import Any, Iterable
 
 if sys.platform != "darwin":
     raise ImportError("This module is only available on macOS")
@@ -19,7 +16,9 @@ from rubicon.objc.types import NSRange
 from typing_extensions import override
 
 from aio_usb.backend.device import UsbBackendDevice
+from aio_usb.backend.interface import UsbBackendInterface, UsbInterfaceMatch
 from aio_usb.backend.monitor import UsbMonitor
+from aio_usb.backend.pipe import UsbBackendInPipe, UsbBackendOutPipe
 from aio_usb.backend.provider import BackendProvider
 from aio_usb.backend.rubicon_objc.dispatch import DispatchQueue
 from aio_usb.backend.rubicon_objc.foundation import NSMutableData
@@ -41,15 +40,17 @@ from aio_usb.backend.rubicon_objc.io_kit.usb.apple_usb_definitions import (
 )
 from aio_usb.backend.rubicon_objc.io_usb_host import (
     IOUSBGetNextEndpointDescriptor,
-    IOUSBGetNextInterfaceDescriptor,
     IOUSBHostAbortOption,
     IOUSBHostDevice,
     IOUSBHostInterface,
+    IOUSBHostPipe,
 )
 from aio_usb.backend.rubicon_objc.runtime import NSErrorError, mach_error_string
 from aio_usb.ch9 import UsbControlRequest
 from aio_usb.device import UsbDevice
 from aio_usb.discovery import UsbDeviceInfo
+from aio_usb.interface import UsbInterface
+from aio_usb.pipe import UsbInPipe, UsbOutPipe
 
 
 def _marshal_device_info(service: IOService) -> UsbDeviceInfo:
@@ -67,19 +68,6 @@ def _marshal_device_info(service: IOService) -> UsbDeviceInfo:
     )
 
 
-def _iterate_interface_descriptors(
-    cfg_desc: IOUSBConfigurationDescriptorPtr,
-) -> Iterable[IOUSBInterfaceDescriptorPtr]:
-    iface_desc = IOUSBGetNextInterfaceDescriptor(cfg_desc, None)
-    while iface_desc:
-        yield iface_desc
-
-        iface_desc = IOUSBGetNextInterfaceDescriptor(
-            cfg_desc,
-            ctypes.cast(iface_desc, IOUSBDescriptorHeaderPtr),
-        )
-
-
 def _iterate_endpoint_descriptors(
     cfg_desc: IOUSBConfigurationDescriptorPtr,
     iface_desc: IOUSBInterfaceDescriptorPtr,
@@ -93,6 +81,166 @@ def _iterate_endpoint_descriptors(
             iface_desc,
             ctypes.cast(ep_desc, IOUSBDescriptorHeaderPtr),
         )
+
+
+class RubiconObjCUsbInPipe(UsbBackendInPipe):
+    def __init__(self, pipe: IOUSBHostPipe) -> None:
+        self._pipe = pipe
+
+    @override
+    async def transfer(self, length: int) -> bytes:
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[int] = loop.create_future()
+
+        def on_complete(status: int, bytesTransferred: int) -> None:
+            if status:
+                future.set_exception(OSError(status, mach_error_string(status)))
+            else:
+                future.set_result(bytesTransferred)
+
+        def on_complete_(status: int, bytesTransferred: int) -> None:
+            # Want to do as little as possible in this callback since it's
+            # called on a separate thread and can't handle exceptions properly.
+            loop.call_soon_threadsafe(
+                on_complete,
+                status,
+                bytesTransferred,
+            )
+
+        error = objc_id()
+        data = self._pipe.hostInterface.ioDataWithCapacity(length, error=error)
+        if data is None:
+            raise NSErrorError(error)
+
+        if not self._pipe.enqueueIORequestWithData(
+            data,
+            completionTimeout=5,
+            error=error,
+            completionHandler=on_complete_,
+        ):
+            raise NSErrorError(error)
+
+        try:
+            transferred = await asyncio.shield(future)
+        except asyncio.CancelledError:
+            if not self._pipe.abortWithOption(
+                IOUSBHostAbortOption.Asynchronous, error=error
+            ):
+                raise NSErrorError(error)
+
+            try:
+                await future
+            except OSError as ex:
+                # abortWithOption() will cause the request to fail with
+                # kIOReturnAborted, if it hasn't already completed. This is
+                # expected and in this case we ignore it an just propagate the
+                # cancellation. Any other error is unexpected and we propagate it.
+                if ex.errno != kIOReturnAborted:
+                    raise
+
+            raise
+
+        return ctypes.string_at(data.mutableBytes, transferred)
+
+
+class RubiconObjCUsbOutPipe(UsbBackendOutPipe):
+    def __init__(self, pipe: IOUSBHostPipe) -> None:
+        self._pipe = pipe
+
+    @override
+    async def transfer(self, data: bytes) -> int:
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[int] = loop.create_future()
+
+        def on_complete(status: int, bytesTransferred: int) -> None:
+            if status:
+                future.set_exception(OSError(status, mach_error_string(status)))
+            else:
+                future.set_result(bytesTransferred)
+
+        def on_complete_(status: int, bytesTransferred: int) -> None:
+            # Want to do as little as possible in this callback since it's
+            # called on a separate thread and can't handle exceptions properly.
+            loop.call_soon_threadsafe(
+                on_complete,
+                status,
+                bytesTransferred,
+            )
+
+        error = objc_id()
+        data_ = self._pipe.hostInterface.ioDataWithCapacity(len(data), error=error)
+        if data_ is None:
+            raise NSErrorError(error)
+
+        data_.replaceBytesInRange(NSRange(0, len(data)), withBytes=data)
+
+        if not self._pipe.enqueueIORequestWithData(
+            data_,
+            completionTimeout=5,
+            error=error,
+            completionHandler=on_complete_,
+        ):
+            raise NSErrorError(error)
+
+        try:
+            transferred = await asyncio.shield(future)
+        except asyncio.CancelledError:
+            if not self._pipe.abortWithOption(
+                IOUSBHostAbortOption.Asynchronous, error=error
+            ):
+                raise NSErrorError(error)
+
+            try:
+                await future
+            except OSError as ex:
+                # abortWithOption() will cause the request to fail with
+                # kIOReturnAborted, if it hasn't already completed. This is
+                # expected and in this case we ignore it an just propagate the
+                # cancellation. Any other error is unexpected and we propagate it.
+                if ex.errno != kIOReturnAborted:
+                    raise
+
+            raise
+
+        return transferred
+
+
+@asynccontextmanager
+async def _open_in_pipe(iface: IOUSBHostInterface) -> AsyncGenerator[Any, UsbInPipe]:
+    for ep_desc in _iterate_endpoint_descriptors(
+        iface.configurationDescriptor,
+        iface.interfaceDescriptor,
+    ):
+        if (ep_desc.contents.bEndpointAddress & 0x80) == 0x80:
+            break
+    else:
+        raise ValueError("No such endpoint for direction in")
+
+    error = objc_id()
+    pipe = iface.copyPipeWithAddress(ep_desc.contents.bEndpointAddress, error=error)
+    if pipe is None:
+        raise NSErrorError(error)
+
+    yield UsbInPipe(RubiconObjCUsbInPipe(pipe))
+
+
+@asynccontextmanager
+async def _open_out_pipe(iface: IOUSBHostInterface) -> AsyncGenerator[Any, UsbOutPipe]:
+    for ep_desc in _iterate_endpoint_descriptors(
+        iface.configurationDescriptor,
+        iface.interfaceDescriptor,
+    ):
+        if (ep_desc.contents.bEndpointAddress & 0x80) == 0x00:
+            break
+    else:
+        raise ValueError("No such endpoint for direction out")
+
+    error = objc_id()
+    pipe = iface.copyPipeWithAddress(ep_desc.contents.bEndpointAddress, error=error)
+    if pipe is None:
+        raise NSErrorError(error)
+
+    yield UsbOutPipe(RubiconObjCUsbOutPipe(pipe))
 
 
 class RubiconObjCUsbInterface(UsbBackendInterface):
@@ -130,6 +278,14 @@ class RubiconObjCUsbInterface(UsbBackendInterface):
         raise NotImplementedError(
             "Need to find a way to get this from the IORegistryEntry"
         )
+
+    @override
+    def open_in_pipe(self) -> AbstractAsyncContextManager[UsbInPipe]:
+        return _open_in_pipe(self._iface)
+
+    @override
+    def open_out_pipe(self) -> AbstractAsyncContextManager[UsbOutPipe]:
+        return _open_out_pipe(self._iface)
 
 
 @asynccontextmanager
@@ -313,208 +469,6 @@ class RubiconObjCUsbDevice(UsbBackendDevice):
             raise
 
         return ctypes.string_at(data.mutableBytes, transferred)
-
-    @override
-    async def transfer_in(self, endpoint_address: int, length: int) -> bytes:
-        # Find the interface that contains the endpoint address.
-        for iface_desc in _iterate_interface_descriptors(
-            self._device.configurationDescriptor
-        ):
-            for ep_desc in _iterate_endpoint_descriptors(
-                self._device.configurationDescriptor, iface_desc
-            ):
-                if ep_desc.contents.bEndpointAddress == endpoint_address:
-                    break
-            else:
-                # no match found, check next interface
-                continue
-
-            # match found, break out of outer loop as well
-            break
-        else:
-            raise ValueError("No such endpoint found")
-
-        match = IOUSBHostInterface.createMatchingDictionaryWithVendorID(
-            self.vendor_id,
-            productID=self.product_id,
-            bcdDevice=None,
-            interfaceNumber=iface_desc.contents.bInterfaceNumber,
-            configurationValue=self._device.configurationDescriptor.contents.bConfigurationValue,
-            interfaceClass=None,
-            interfaceSubclass=None,
-            interfaceProtocol=None,
-            speed=None,
-            productIDArray=None,
-        )
-
-        # REVISIT: This could cause problems if there are multiple devices with
-        # the same VID/PID/interface number/configuration value. We either need
-        # to add another property to the dictionary to match the parent IOService
-        # or we should use an IORegistry iterator to find the IOService.
-        iface_svc = IOService.get_matching_service(match)
-        if iface_svc is None:
-            raise RuntimeError("Interface service not found")
-
-        error = objc_id()
-
-        # REVISIT: we probably don't want to be creating a new object every time.
-        iface_obj = IOUSBHostInterface.alloc().initWithIOService(
-            iface_svc, options=0, queue=None, error=error, interestHandler=None
-        )
-        if iface_obj is None:
-            raise NSErrorError(error)
-
-        try:
-            pipe = iface_obj.copyPipeWithAddress(endpoint_address, error=error)
-            if pipe is None:
-                raise NSErrorError(error)
-
-            loop = asyncio.get_running_loop()
-            future: asyncio.Future[int] = loop.create_future()
-
-            def on_complete(status: int, bytesTransferred: int) -> None:
-                if status:
-                    loop.call_soon_threadsafe(
-                        future.set_exception, OSError(status, mach_error_string(status))
-                    )
-                else:
-                    loop.call_soon_threadsafe(future.set_result, bytesTransferred)
-
-            data = iface_obj.ioDataWithCapacity(length, error=error)
-            if data is None:
-                raise NSErrorError(error)
-
-            if not pipe.enqueueIORequestWithData(
-                data,
-                completionTimeout=5,
-                error=error,
-                completionHandler=on_complete,
-            ):
-                raise NSErrorError(error)
-
-            try:
-                transferred = await asyncio.shield(future)
-            except asyncio.CancelledError:
-                if not pipe.abortWithOption(
-                    IOUSBHostAbortOption.Asynchronous, error=error
-                ):
-                    raise NSErrorError(error)
-
-                try:
-                    await future
-                except OSError as ex:
-                    # abortDeviceRequestsWithOption() will cause the request to fail
-                    # with kIOReturnAborted, if it hasn't already completed. This is
-                    # expected and in this case we ignore it an just propagate the
-                    # cancellation. Any other error is unexpected and we propagate it.
-                    if ex.errno != kIOReturnAborted:
-                        raise
-
-                raise
-
-            return ctypes.string_at(data.mutableBytes, transferred)
-        finally:
-            iface_obj.destroy()
-
-    async def transfer_out(self, endpoint_address: int, data: bytes) -> int:
-        # Find the interface that contains the endpoint address.
-        for iface_desc in _iterate_interface_descriptors(
-            self._device.configurationDescriptor
-        ):
-            for ep_desc in _iterate_endpoint_descriptors(
-                self._device.configurationDescriptor, iface_desc
-            ):
-                if ep_desc.contents.bEndpointAddress == endpoint_address:
-                    break
-            else:
-                continue
-            break
-        else:
-            raise ValueError("No such endpoint found")
-
-        match = IOUSBHostInterface.createMatchingDictionaryWithVendorID(
-            self.vendor_id,
-            productID=self.product_id,
-            bcdDevice=None,
-            interfaceNumber=iface_desc.contents.bInterfaceNumber,
-            configurationValue=self._device.configurationDescriptor.contents.bConfigurationValue,
-            interfaceClass=None,
-            interfaceSubclass=None,
-            interfaceProtocol=None,
-            speed=None,
-            productIDArray=None,
-        )
-
-        # REVISIT: This could cause problems if there are multiple devices with
-        # the same VID/PID/interface number/configuration value. We either need
-        # to add another property to the dictionary to match the parent IOService
-        # or we should use an IORegistry iterator to find the IOService.
-        iface_svc = IOService.get_matching_service(match)
-        if iface_svc is None:
-            raise RuntimeError("Interface service not found")
-
-        error = objc_id()
-
-        # REVISIT: we probably don't want to be creating a new object every time.
-        iface_obj = IOUSBHostInterface.alloc().initWithIOService(
-            iface_svc, options=0, queue=None, error=error, interestHandler=None
-        )
-        if iface_obj is None:
-            raise NSErrorError(error)
-
-        try:
-            pipe = iface_obj.copyPipeWithAddress(endpoint_address, error=error)
-            if pipe is None:
-                raise NSErrorError(error)
-
-            loop = asyncio.get_running_loop()
-            future: asyncio.Future[int] = loop.create_future()
-
-            def on_complete(status: int, bytesTransferred: int) -> None:
-                if status:
-                    loop.call_soon_threadsafe(
-                        future.set_exception, OSError(status, mach_error_string(status))
-                    )
-                else:
-                    loop.call_soon_threadsafe(future.set_result, bytesTransferred)
-
-            data_ = iface_obj.ioDataWithCapacity(len(data), error=error)
-            if data_ is None:
-                raise NSErrorError(error)
-
-            data_.replaceBytesInRange(NSRange(0, len(data)), withBytes=data)
-
-            if not pipe.enqueueIORequestWithData(
-                data_,
-                completionTimeout=5,
-                error=error,
-                completionHandler=on_complete,
-            ):
-                raise NSErrorError(error)
-
-            try:
-                transferred = await asyncio.shield(future)
-            except asyncio.CancelledError:
-                if not pipe.abortWithOption(
-                    IOUSBHostAbortOption.Asynchronous, error=error
-                ):
-                    raise NSErrorError(error)
-
-                try:
-                    await future
-                except OSError as ex:
-                    # abortDeviceRequestsWithOption() will cause the request to fail
-                    # with kIOReturnAborted, if it hasn't already completed. This is
-                    # expected and in this case we ignore it an just propagate the
-                    # cancellation. Any other error is unexpected and we propagate it.
-                    if ex.errno != kIOReturnAborted:
-                        raise
-
-                raise
-
-            return transferred
-        finally:
-            iface_obj.destroy()
 
 
 @asynccontextmanager

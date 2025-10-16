@@ -2,7 +2,10 @@
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
 from abc import ABC, abstractmethod
+from contextlib import AbstractAsyncContextManager
 from typing import TypedDict
+
+from aio_usb.pipe import UsbInPipe, UsbOutPipe
 
 
 class UsbInterfaceMatch(TypedDict, total=False):
@@ -66,5 +69,25 @@ class UsbBackendInterface(ABC):
     def description(self) -> str | None:
         """
         A human-readable description of the interface, if available.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def open_in_pipe(self) -> AbstractAsyncContextManager[UsbInPipe]:
+        """
+        Open an IN pipe (bulk or interrupt endpoint) for communication.
+
+        Returns:
+            An asynchronous context manager that yields a UsbInPipe object.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def open_out_pipe(self) -> AbstractAsyncContextManager[UsbOutPipe]:
+        """
+        Open an OUT pipe (bulk or interrupt endpoint) for communication.
+
+        Returns:
+            An asynchronous context manager that yields a UsbOutPipe object.
         """
         raise NotImplementedError

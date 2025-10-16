@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 David Lechner <david@pybricks.com>
 
+from contextlib import AbstractAsyncContextManager
 from typing import final
 
 from aio_usb.backend.interface import UsbBackendInterface
+from aio_usb.pipe import UsbInPipe, UsbOutPipe
 
 
 @final
@@ -56,3 +58,15 @@ class UsbInterface:
         A human-readable description of the interface, if available.
         """
         return self._backend.description
+
+    def open_in_pipe(self) -> AbstractAsyncContextManager[UsbInPipe]:
+        """
+        Open an IN pipe (bulk or interrupt endpoint) for communication.
+        """
+        return self._backend.open_in_pipe()
+
+    def open_out_pipe(self) -> AbstractAsyncContextManager[UsbOutPipe]:
+        """
+        Open an OUT pipe (bulk or interrupt endpoint) for communication.
+        """
+        return self._backend.open_out_pipe()
